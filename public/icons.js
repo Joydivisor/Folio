@@ -1,0 +1,32 @@
+const paths={
+ library:'<path d="M4 4h4v16H4zM11 4h4v16h-4zM18 4l3 15"/>',
+ grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+ list:'<path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
+ folder:'<path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+ settings:'<path d="m9 3-.5 2.5-2 .9L4.3 5.6 2 9.5l2 1.7v1.6L2 14.5l2.3 3.9 2.2-.8 2 .9L9 21h6l.5-2.5 2-.9 2.2.8 2.3-3.9-2-1.7v-1.6l2-1.7-2.3-3.9-2.2.8-2-.9L15 3Z"/><circle cx="12" cy="12" r="3"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/>',
+ monitor:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/>',
+ expand:'<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
+ left:'<path d="m15 5-7 7 7 7"/>',
+ minus:'<path d="M5 12h14"/>',
+ bookmark:'<path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-4-6 4Z"/>',
+ arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',
+ back:'<path d="M19 12H5m6-6-6 6 6 6"/>',
+ upload:'<path d="M12 15V3m-5 5 5-5 5 5M4 15v5h16v-5"/>',
+ file:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 14h8M8 17h5"/>',
+ spark:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/>',
+ chevron:'<path d="m9 5 7 7-7 7"/>',
+ refresh:'<path d="M20 8a8 8 0 1 0 0 8M20 3v5h-5"/>',
+ close:'<path d="m6 6 12 12M6 18 18 6"/>',
+ canvas:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="m8 16 1-3 6-6 2 2-6 6-3 1Zm5-7 2 2"/>',
+ sidebar:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>',
+ note:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6ZM8 10h3M8 14h8M8 18h5"/>',
+ link:'<path d="m10 13 4-4M8 15l-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0m2 8a3 3 0 0 0 4 0l5-5a3 3 0 0 0-4-4l-2 2"/>',
+ moon:'<path d="M20 15a8.5 8.5 0 0 1-11-11A9 9 0 1 0 20 15Z"/>'
+};
+export const icon=(name)=>`<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.file}</svg>`;
+export function hydrateIcons(){document.querySelectorAll('[data-icon]').forEach(e=>e.innerHTML=icon(e.dataset.icon));}

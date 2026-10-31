@@ -1,0 +1,7 @@
+import {mkdir,writeFile} from 'node:fs/promises';
+const paragraphs=[['Permutation groups','Let sigma = (1 2 3), tau = (1 2).','Compose from right to left.','sigma tau = (1 3), tau sigma = (2 3).'],['Solvable groups','Derived series: S3 -> A3 -> identity.','S4 -> A4 -> V4 -> identity.','S5 -> A5 -> A5.']];
+const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>'];
+for(let i=0;i<2;i++){const content=paragraphs[i].map((t,j)=>`BT /F1 ${j?14:24} Tf 65 ${720-j*55} Td (${t.replace(/[()\\]/g,'\\$&')}) Tj ET`).join('\n');objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 7 0 R >> >> /Contents ${4+i*2} 0 R >>`,`<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`);}
+objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+let text='%PDF-1.4\n',offsets=[0];objects.forEach((o,i)=>{offsets.push(Buffer.byteLength(text));text+=`${i+1} 0 obj\n${o}\nendobj\n`;});const xref=Buffer.byteLength(text);text+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`+offsets.slice(1).map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+await mkdir(new URL('./fixtures/',import.meta.url),{recursive:true});await writeFile(new URL('./fixtures/group-theory.pdf',import.meta.url),text);await writeFile(new URL('./fixtures/reading-notes.txt',import.meta.url),'置换群阅读测试\n\n置换是一个集合到自身的双射。\n本文件用于验证本地导入、中文阅读和选段引用。\n');

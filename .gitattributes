@@ -1,0 +1,10 @@
+* text=auto
+*.pdf binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.svg text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.yml text eol=lf
