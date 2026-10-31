@@ -34,12 +34,15 @@ if(platform==='darwin'){
 }else{
  if(arch!=='x64')throw Error('Only Linux x64 is supported in this release');
  const stage=path.join(out,'deb'),install=path.join(stage,'opt','Folio');fs.mkdirSync(path.dirname(install),{recursive:true});fs.cpSync(folder,install,{recursive:true});
+ function permissions(dir){fs.chmodSync(dir,0o755);for(const e of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,e.name);if(e.isDirectory())permissions(p);else if(e.isFile())fs.chmodSync(p,(fs.statSync(p).mode&0o111)?0o755:0o644);}}
+ permissions(stage);
  fs.chmodSync(path.join(install,'chrome-sandbox'),0o4755);
  const control=path.join(stage,'DEBIAN');fs.mkdirSync(control,{recursive:true});
  fs.writeFileSync(path.join(control,'control'),`Package: folio\nVersion: ${version.replace('-beta.','~beta.')}\nArchitecture: amd64\nMaintainer: Folio <noreply@getfolio.pages.dev>\nSection: education\nPriority: optional\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libxtst6, libatspi2.0-0, libdrm2\nHomepage: https://getfolio.pages.dev/\nDescription: Local-first interactive reading workspace\n Read documents, annotate and explore concepts with your own AI service.\n`);
  const applications=path.join(stage,'usr','share','applications'),icons=path.join(stage,'usr','share','icons','hicolor','512x512','apps');fs.mkdirSync(applications,{recursive:true});fs.mkdirSync(icons,{recursive:true});
  fs.copyFileSync(icon,path.join(icons,'folio.png'));
  fs.writeFileSync(path.join(applications,'folio.desktop'),'[Desktop Entry]\nName=Folio\nComment=Interactive reading workspace\nExec=/opt/Folio/Folio\nIcon=folio\nTerminal=false\nType=Application\nCategories=Education;Office;\nStartupWMClass=Folio\n');
+ fs.chmodSync(path.join(install,'Folio'),0o755);
  run('dpkg-deb',['--root-owner-group','--build',stage,path.join(release,`Folio-${version}-linux-x64.deb`)]);
 }
 fs.writeFileSync(path.join(out,'runtime-path.txt'),platform==='darwin'?path.join(app,'Contents','MacOS','Folio'):path.join(folder,'Folio'));

@@ -8,6 +8,9 @@ import {requestReading,parseReading,mountReadingAnswer} from './reading-response
 import {sourceLabel} from './source-label.js';
 import {verifyPlanAgainstSource} from './source-verification.js';
 import {mountConcept} from './concept-view.js';
+import {extractCredential} from './credential-input.js';
+import {contextBelongsToSource} from './selection-source.js';
+import {validatePermutationSnapshot} from './permutation-state.js';
 import {setupAnnotations} from './annotations.js';
 import {requestUnderstanding,parseUnderstanding} from './understanding.js';
 import {mountPermutation} from './permutation-view.js';
@@ -129,12 +132,15 @@ $('bookmarkButton').onclick=()=>{positions[current.id]=page;saveLocal('jianwei-p
 document.addEventListener('selectionchange',()=>{const s=getSelection();if(s&&s.toString().trim()&&$('documentContent').contains(s.anchorNode)&&$('documentContent').contains(s.focusNode))selected={text:s.toString().trim().slice(0,16000),name:current.name,id:current.id,page};});
 function setQuote(q){quote=q;$('quote').hidden=!q;if(q){$('quoteSource').textContent=sourceLabel(q);$('quoteText').textContent=q.text;$('prompt').focus();}}
 $('citeSelection').onmousedown=e=>e.preventDefault();$('citeSelection').onclick=()=>selected?visualizeSelection({...selected}):toast('先在左侧选中一段文字。');$('clearQuote').onclick=()=>endConversation();
-$('learning').ondragover=e=>{e.preventDefault();$('learning').classList.add('drag-over');};$('learning').ondragleave=e=>{if(!$('learning').contains(e.relatedTarget))$('learning').classList.remove('drag-over');};$('learning').ondrop=guard(async e=>{e.preventDefault();$('learning').classList.remove('drag-over');if(e.dataTransfer.files.length){await importFiles(e.dataTransfer.files);showLibrary();return;}const text=e.dataTransfer.getData('text/plain').trim();if(text){const same=selected&&selected.text===text;visualizeSelection(same?{...selected}:{text:text.slice(0,16000),name:'拖入的文字',id:null,page:'—'});}});
-$('documentContent').ondragstart=e=>{const s=getSelection()?.toString().trim();if(s)e.dataTransfer.setData('text/plain',s);};
+$('learning').ondragover=e=>{e.preventDefault();$('learning').classList.add('drag-over');};$('learning').ondragleave=e=>{if(!$('learning').contains(e.relatedTarget))$('learning').classList.remove('drag-over');};$('learning').ondrop=guard(async e=>{e.preventDefault();$('learning').classList.remove('drag-over');if(e.dataTransfer.files.length){await importFiles(e.dataTransfer.files);showLibrary();return;}const text=e.dataTransfer.getData('text/plain').trim();if(text){const same=readerDrag&&e.dataTransfer.getData('application/x-folio-selection')===readerDrag.token&&readerDrag.source.text===text&&readerDrag.source.id===current.id;visualizeSelection(same?{...readerDrag.source}:{text:text.slice(0,16000),name:'拖入的文字',id:null,page:'—',external:true});readerDrag=null;}});
+let readerDrag=null;
+$('documentContent').ondragstart=e=>{const s=getSelection()?.toString().trim().slice(0,16000);if(s){readerDrag={token:crypto.randomUUID(),source:{text:s,id:current.id,name:current.name,page}};e.dataTransfer.setData('text/plain',s);e.dataTransfer.setData('application/x-folio-selection',readerDrag.token);}};
+$('documentContent').ondragend=()=>{readerDrag=null;};
 function setTab(tab){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));for(const t of ['chat','lab','notes','visual'])$(t+'Panel').hidden=t!==tab;if(tab==='notes')renderNotes();}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function settingsToForm(){$('baseUrl').value=settings.baseUrl;$('modelName').value=settings.model;$('apiKey').value=settings.apiKey;$('thinkingMode').checked=settings.thinking;}
-function readSettingsForm(){return {baseUrl:$('baseUrl').value.trim().replace(/\/$/,''),model:$('modelName').value.trim(),apiKey:$('apiKey').value.trim(),thinking:$('thinkingMode').checked};}
+function readSettingsForm(){return {baseUrl:$('baseUrl').value.trim().replace(/\/$/,''),model:$('modelName').value.trim(),apiKey:extractCredential($('apiKey').value),thinking:$('thinkingMode').checked};}
+$('apiKey').addEventListener('paste',e=>{const text=e.clipboardData?.getData('text');if(!text)return;e.preventDefault();try{$('apiKey').value=extractCredential(text);$('connectionResult').textContent=t('已识别密钥，点击测试连接后验证。');}catch(error){$('apiKey').value='';$('connectionResult').textContent=t(error.message);}});
 function updateModel(){$('modelStatus').textContent=(settings.model==='deepseek-flash'?'DeepSeek Flash':settings.model)+(hasKey()?(language()==='en'?' · Connected':' · 已配置'):(language()==='en'?' · Not connected':' · 未连接'));}
 for(const id of ['settingsButton','modelButton'])$(id).onclick=()=>{settingsToForm();$('settingsDialog').showModal();};
 async function saveSettings(){
@@ -159,7 +165,7 @@ async function askAPI(config,messages,signal){
 }
 $('testConnection').onclick=async()=>{const button=$('testConnection');button.disabled=true;$('connectionResult').textContent='正在连接模型…';try{if(window.folioDesktop)await saveSettings();const answer=await askAPI(readSettingsForm(),[{role:'user',content:'只回复“连接成功”。'}]);$('connectionResult').textContent=t('连接成功')+' · '+answer.slice(0,70);}catch(e){$('connectionResult').textContent=e.message;}finally{button.disabled=false;}};
 $('prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('chatForm').requestSubmit();}};
-function addNote(text,source){notes.unshift({id:crypto.randomUUID(),text,source,date:new Date().toLocaleString('zh-CN')});saveLocal('jianwei-notes',notes);renderNotes();toast('已存入笔记');}
+function addNote(text,source,artifact){notes.unshift({id:crypto.randomUUID(),text,source,...(artifact?{artifact:structuredClone(artifact)}:{}),date:new Date().toLocaleString('zh-CN')});saveLocal('jianwei-notes',notes);renderNotes();toast('已存入笔记');}
 function renderNotes(){if(typeof notebook!=='undefined')notebook.render();$('globalNoteCount').textContent=notes.length;$('noteCount').textContent=notes.length;$('notesList').innerHTML=notes.length?'':'<div class="empty-state">还没有笔记。<br>把一次回答或实验保存下来，慢慢形成自己的理解。</div>';for(const note of notes){const card=document.createElement('article');card.className='note-card';const meta=document.createElement('div');meta.className='note-meta';meta.textContent=note.date+(note.question?' · '+note.question:'');const p=document.createElement('p');p.textContent=note.text;card.append(meta,p);if(note.source?.id){const source=document.createElement('button');source.className='note-source';source.textContent='↗ '+sourceLabel(note.source);source.onclick=guard(async()=>{const e=entries().find(x=>x.id===note.source.id);if(!e){toast('请先重新连接这篇文献所在的文件夹。');return;}await openDocument(e);await changePage(note.source.page);if(note.source.annotationId)await annotations.revealId(note.source.annotationId);});card.append(source);}const actions=document.createElement('div');actions.className='note-actions';const edit=document.createElement('button');edit.textContent='编辑';edit.onclick=()=>{if(p.contentEditable==='true'){note.text=p.textContent;saveLocal('jianwei-notes',notes);p.contentEditable='false';edit.textContent='编辑';}else{p.contentEditable='true';p.focus();edit.textContent='保存';}};const del=document.createElement('button');del.textContent='删除';del.onclick=()=>{notes.splice(notes.findIndex(n=>n.id===note.id),1);saveLocal('jianwei-notes',notes);renderNotes();};actions.append(edit,del);card.append(actions);$('notesList').append(card);}}
 $('exportNotes').onclick=()=>{if(!notes.length){toast('还没有可以导出的笔记。');return;}const text='# Folio · 学习笔记\n\n'+notes.map(n=>'## '+n.date+'\n\n'+n.text+'\n\n'+(n.source?'来源：'+sourceLabel(n.source)+'\n':'')).join('\n---\n\n');const url=URL.createObjectURL(new Blob([text],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Folio-学习笔记.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 let n=3,layers=[permutations(3)],layerIndex=0,finished=false;
@@ -172,7 +178,7 @@ function resetDerived(){n=Number($('groupSelect').value);layers=[permutations(n)
 $('groupSelect').onchange=resetDerived;$('resetDerived').onclick=resetDerived;
 $('saveExperiment').onclick=()=>addNote('导出列实验\n'+layers.map(g=>groupLabel(g)+'（'+g.length+' 个元素）').join(' → ')+'\n'+$('derivedExplanation').textContent,conversations.current?.source||{id:current.id,name:current.name,page});
 let resize=false;$('divider').onpointerdown=e=>{resize=true;$('divider').setPointerCapture(e.pointerId);document.body.classList.add('resize-active');};$('divider').onpointermove=e=>{if(resize)document.documentElement.style.setProperty('--left',Math.max(30,Math.min(65,(innerWidth-e.clientX)/innerWidth*100))+'%');};$('divider').onpointerup=guard(async()=>{resize=false;document.body.classList.remove('resize-active');if(pdf)await renderPage();});$('divider').onkeydown=e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--left'));document.documentElement.style.setProperty('--left',Math.max(30,Math.min(65,cur+(e.key==='ArrowLeft'?2:-2)))+'%');}};
-const notebook=setupNotebook({notes,entries,renderMath,memoryEnabled:()=>rememberConversations,onMemoryChange:enabled=>{rememberConversations=enabled;saveLocal('folio-remember-conversations',enabled);updateMemoryUI();},onChanged:()=>{saveLocal('jianwei-notes',notes);renderNotes();},onOpenSource:guard(async note=>{const entry=entries().find(e=>e.id===note.source?.id);if(!entry){toast('原文未连接，笔记和对话仍保留。请在文献库重新连接原文件夹。');return;}await openDocument(entry);if(note.source.page)await changePage(note.source.page);if(note.source.annotationId)await annotations.revealId(note.source.annotationId);})});
+const notebook=setupNotebook({notes,entries,renderMath,onRestoreArtifact:restoreArtifact,memoryEnabled:()=>rememberConversations,onMemoryChange:enabled=>{rememberConversations=enabled;saveLocal('folio-remember-conversations',enabled);updateMemoryUI();},onChanged:()=>{saveLocal('jianwei-notes',notes);renderNotes();},onOpenSource:guard(async note=>{const entry=entries().find(e=>e.id===note.source?.id);if(!entry){toast('原文未连接，笔记和对话仍保留。请在文献库重新连接原文件夹。');return;}await openDocument(entry);if(note.source.page)await changePage(note.source.page);if(note.source.annotationId)await annotations.revealId(note.source.annotationId);})});
 function updateMemoryUI(){$('memoryShortcut').textContent=t('自动整理：'+(rememberConversations?'开启':'关闭'));}
 function endConversation(){
  requestController?.abort();requestController=null;conversations.reset();setBusy(false);clearScene();setQuote(null);$('conversationContext').hidden=true;$('conversationTopic').textContent='';$('prompt').value='';selected=null;getSelection()?.removeAllRanges();
@@ -180,6 +186,15 @@ function endConversation(){
  document.querySelector('[data-tab=lab]').hidden=true;resetVisual();setTab('visual');
 }
 function routeNotes(){if(!location.hash.startsWith('#/notes'))return;libraryFilter='notes';showLibrary();const value=location.hash.slice('#/notes'.length).replace(/^\//,'');let id=null;try{id=value?decodeURIComponent(value):null;}catch{}notebook.select(id);}
+async function restoreArtifact(note){try{
+ const artifact=validatePermutationSnapshot(note.artifact),entry=entries().find(e=>e.id===note.source?.id);
+ if(!entry){toast('请先重新连接原文，再恢复交互实验。');return;}
+ await openDocument(entry);if(note.source.page)await changePage(note.source.page);
+ if(!documentReady)return;
+ setAICollapsed(false);setQuote(note.source);clearScene();setTab('visual');
+ disposeScene=mountPermutation($('visualStage'),artifact.plan,(text,snapshot)=>addNote(text,note.source,snapshot),artifact);
+ describePlan(artifact.plan);
+}catch(error){toast(error.message);}}
 $('globalNotesButton').onclick=()=>{if(location.hash==='#/notes')routeNotes();else location.hash='/notes';};
 $('memoryShortcut').onclick=()=>{$('globalNotesButton').click();};
 window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#/notes'))routeNotes();else if(libraryFilter==='notes'){libraryFilter='all';showLibrary();}});
@@ -212,7 +227,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.class
 function describePlan(plan){const box=$('analysisSummary');box.hidden=false;box.replaceChildren();const badge=document.createElement('span');badge.textContent=['permutation','derived','tetrahedron'].includes(plan.kind)?'本地计算':plan.kind==='clarify'?'待补充':plan.kind==='unsupported'?'暂不支持':'AI 解读';const text=document.createElement('span');text.textContent=plan.object;text.title=plan.reason;box.append(badge,text);}
 function renderPlan(plan,source){
  describePlan(plan);
- if(plan.kind==='permutation'){setTab('visual');mountPermutation($('visualStage'),plan,text=>addNote(text,source));}
+ if(plan.kind==='permutation'){setTab('visual');disposeScene=mountPermutation($('visualStage'),plan,(text,artifact)=>addNote(text,source,artifact));}
  else if(plan.kind==='derived'){document.querySelector('[data-tab=lab]').hidden=false;setTab('lab');$('groupSelect').value=String(plan.n);$('groupSelect').dispatchEvent(new Event('change',{bubbles:true}));resetDerived();}
  else if(plan.kind==='tetrahedron')showScene({operation:plan.operation,explanation:plan.reason,generated:!source.builtin},source);
  else if(['clarify','unsupported'].includes(plan.kind)){$('visualStage').innerHTML='<div class="visual-error"><h2>'+esc(plan.kind==='clarify'?'需要补充一点信息':'这个实验还未支持')+'</h2><p>'+esc(plan.reason)+'</p><p>可以在下方补充说明，原文引用仍然保留。</p></div>';}
@@ -226,7 +241,7 @@ async function visualizeSelection(source,forceQuestion=false,{followup=false,que
  const controller=new AbortController();requestController=controller;setBusy(true);$('visualStage').innerHTML='<div class="visual-loading" role="status"><span>正在理解这段内容</span><small>识别对象、参数与运算约定</small></div>';
  try{
   let context=null;
-  if($('includePage').checked&&(!source.id||source.id===current.id)){
+  if($('includePage').checked&&contextBelongsToSource(source,current.id)){
    setPhase('正在查阅原文');
    context=await getDocumentIndex().retrieve((source.text||'')+'\n'+question,Number(source.page)||page,{signal:controller.signal,onProgress:(done,count)=>setPhase('正在查阅原文 · '+done+' / '+count+' 页')});
    context.anchorPage=Number(source.page)||page;
@@ -235,7 +250,6 @@ async function visualizeSelection(source,forceQuestion=false,{followup=false,que
   const ask=messages=>askAPI({...settings,responseFormat:'json'},messages,controller.signal);
   const response=await requestStructured(ask,requestReading(source.text,context,{question,history:conversations.history(),answerLanguage:readLocal('folio-answer-language','auto')}),raw=>parseReading(raw,context?.excerpts||[]),{signal:controller.signal,onRepair:()=>setPhase('正在整理回答格式')});if(controller.signal.aborted||!conversations.isCurrent(sessionToken))return;let plan=response.plan;
   try{plan=verifyPlanAgainstSource(plan,source.text+'\n'+response.parameterEvidence.map(e=>e.quote).join('\n'));}catch{plan={kind:'explain',object:response.answer.title,reason:'已展示原文解读，参数存在不同定义，暂不混合计算。'};}
-  if(plan.kind==='permutation'&&/平方|立方|σ[²³]|σ\s*\^\s*[2-9]/.test(question))plan={kind:'concept',object:response.answer.title,reason:'解释幂运算及其循环结构。'};
   conversations.complete(sessionToken,question,response.answer,plan);conversations.setArtifact(sessionToken,plan);
   describePlan(plan);
   $('visualStage').replaceChildren();

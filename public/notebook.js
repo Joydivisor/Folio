@@ -1,6 +1,6 @@
 import {language,t} from './i18n.js';
 import {noteRoute,noteTrail} from './conversations.js';
-export function setupNotebook({notes,entries,onOpenSource,onChanged,renderMath,onMemoryChange,memoryEnabled}){
+export function setupNotebook({notes,entries,onOpenSource,onRestoreArtifact,onChanged,renderMath,onMemoryChange,memoryEnabled}){
  const displayTrail=note=>noteTrail(note).map((part,index)=>language()==='en'?(index===0?'Notes':index===2?part.replace(/^第 (\d+) 页$/,'Page $1'):part):part);
  const $=id=>document.getElementById(id);let selected=null;
  const button=(label,fn)=>{const b=document.createElement('button');b.textContent=label;b.onclick=fn;return b;};
@@ -16,6 +16,7 @@ export function setupNotebook({notes,entries,onOpenSource,onChanged,renderMath,o
   const title=document.createElement('h2');title.textContent=note.title||'阅读笔记';
   const meta=document.createElement('p');meta.className='muted';meta.textContent=note.date+(note.kind==='conversation'?(language()==='en'?' · Local note · '+note.turns.length+' turns':' · 本机整理 · '+note.turns.length+' 轮对话'):'');
   const actions=document.createElement('div');actions.className='notebook-actions';
+  if(note.artifact?.kind==='permutation-state'&&onRestoreArtifact)actions.append(button('恢复交互实验',()=>onRestoreArtifact(note)));
   if(note.source?.id){const exists=entries().some(e=>e.id===note.source.id);actions.append(button(exists?'打开原文':'重新连接原文',()=>onOpenSource(note)));}
   actions.append(button('导出这条笔记',()=>download(note)),button('编辑笔记',()=>{content.hidden=true;const input=document.createElement('textarea');input.className='note-editor';input.value=note.text;const save=button('保存修改',()=>{note.text=input.value;onChanged();render();});detail.append(input,save);input.focus();}),button('删除笔记',()=>{const index=notes.findIndex(n=>n.id===note.id);if(index<0)return;notes.splice(index,1);onChanged();render();}));
   const content=document.createElement('div');content.className='notebook-prose';content.textContent=note.text;

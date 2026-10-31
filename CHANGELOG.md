@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-beta.4 · 2026-11-01
+
+- Add macOS Apple Silicon and Intel disk images and a Linux x64 Debian package.
+- Adapt native windows and application menus; refuse persistent credentials on Linux plaintext fallback storage.
+- Extract one API key from explicitly pasted text; keep endpoint settings under Advanced.
+- Bind dragged passages to the correct source document; external text no longer inherits an unrelated open book.
+- Keep permutation powers interactive, with cycle playback, an exponent slider and source-linked saved experiment snapshots.
+- Document the next reading upgrades and the official ChatGPT sign-in eligibility requirements.
+
 ## 1.0.0-beta.3 · 2026-10-31
 
 - Add a self-contained Windows x64 installer with English and Simplified Chinese setup pages.

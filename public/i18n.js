@@ -1,5 +1,12 @@
 // Interface strings only. Documents, answers, quotes and authored notes are never translated.
 export const dictionary = Object.fromEntries(`
+已识别密钥，点击测试连接后验证。|Key detected. Test the connection to verify it.
+粘贴密钥，或包含密钥的一段文本|Paste a key or text containing one
+恢复交互实验|Restore interactive experiment
+请先重新连接原文，再恢复交互实验。|Reconnect the source document to restore this experiment.
+播放一个周期|Play one cycle
+暂停|Pause
+重复作用 σ|Repeat σ
 拖入一段原文|Drop a passage here
 选中左侧文字，拖到这里。|Select text in the reader and drag it here.
 把定义、关系与步骤展开来看。|Explore definitions, relationships and steps.
