@@ -40,3 +40,13 @@
 .app-header .document-tab-close:active{transform:translateY(-50%);background:var(--hover)}
 .document-tab-close .icon{display:block;width:14px;height:14px}
 .document-tab-menu{min-width:160px}
+/* Composer controls: optically centered SVG, flat solid surface, no bevel. */
+#chatForm #sendButton,#chatForm #stopButton{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;min-width:40px;min-height:40px;padding:0;margin:0;border:0;border-radius:50%;background:#f4f4f5;color:#252831;box-shadow:none;line-height:1;appearance:none;transition:background-color .15s,transform .12s;align-self:center}
+[data-theme="light"] #chatForm #sendButton,[data-theme="light"] #chatForm #stopButton{background:#272a32;color:#fff}
+#chatForm #sendButton svg{display:block;width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#chatForm #stopButton svg{display:block;width:20px;height:20px;fill:currentColor}
+#chatForm #sendButton:hover,#chatForm #stopButton:hover{background:#dedee1}
+[data-theme="light"] #chatForm #sendButton:hover,[data-theme="light"] #chatForm #stopButton:hover{background:#3e424b}
+#chatForm #sendButton:active,#chatForm #stopButton:active{transform:scale(.94)}
+#chatForm #sendButton:focus-visible,#chatForm #stopButton:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#chatForm #sendButton:disabled{opacity:.4;cursor:default;transform:none}

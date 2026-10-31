@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0-beta.2 · 2026-10-31
+
+- Replace the composer send control with a solid circle and centered SVG arrow; match the stop control.
+- Start with an empty library. Remove the bundled group-theory guide, example questions and fixed demonstration entries.
+- Keep interactive renderers available for users' own documents and AI-generated plans.
+- Re-audit the packaged runtime for credentials, local profiles and development fixtures.
+
 ## 1.0.0-beta.1 · 2026-10-31
 
 First downloadable Windows beta, based on local revision 13.
