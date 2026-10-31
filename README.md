@@ -4,11 +4,13 @@
 
 ## 下载与运行
 
-- 下载页：https://joydivisor.github.io/Folio.github.io/
+- 下载页：https://getfolio.pages.dev/
 - Windows 发布：https://github.com/Joydivisor/Folio.github.io/releases
-- 当前版本：**1.0.0-beta.2**。
+- 当前版本：**1.0.0-beta.3**。
 
-下载 Windows x64 ZIP，完整解压，然后运行文件夹中的 `Folio.exe`。请保留同目录的所有资源，不要只移动 exe。不需要安装 Node.js。
+下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.3-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
+
+安装后可从开始菜单启动。更新时先关闭 Folio，再将新版安装到原位置。可从 Windows「已安装的应用」或开始菜单卸载；卸载保留个人文献、批注、笔记和设置。安装程序仅移除清单中的程序文件，不递归删除整个安装文件夹。旧 ZIP 版用户可直接安装新版，应用数据仍使用原来的独立目录。
 
 这是尚未签名的测试版，没有自动更新。当前只提供 Windows x64 软件包。
 
@@ -49,9 +51,12 @@ npm run desktop
 npm run check
 npm test
 npm run package:win
+npm run installer:win
 ```
 
-产物位于 `dist/v1.0.0-beta.2/Folio-win32-x64/`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
+程序产物位于 `dist/v1.0.0-beta.3/Folio-win32-x64/`；安装程序位于 `releases/Folio-Setup-1.0.0-beta.3-win-x64.exe`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
+
+安装器使用 [NSIS 3.13](https://nsis.sourceforge.io/Download) 的 Modern UI 2。将官方便携编译器解压到 `.installer-cache/nsis-3.13/`，或用环境变量 `NSIS_EXE` 指向 `makensis.exe`，再执行上面的构建命令。版本信息与精确卸载清单由构建脚本生成。手动集成测试：`powershell -ExecutionPolicy Bypass -File scripts/test-installer.ps1`，会在临时测试目录执行安装、更新和卸载；检测到现有安装或同名快捷方式时会停止。
 
 真实模型测试为手动步骤，会消耗模型额度；CI 只运行离线测试。将 `FOLIO_API_KEY_FILE` 环境变量指向设备上的密钥文件，再运行 `scripts/evaluate-ai.mjs` 等评估脚本；不要将密钥写入代码或命令参数。评估结果写入已忽略的 `tests/reports/`。
 

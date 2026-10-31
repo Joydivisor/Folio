@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0-beta.3 · 2026-10-31
+
+- Add a self-contained Windows x64 installer with English and Simplified Chinese setup pages.
+- Choose an installation directory and an optional desktop shortcut; add Start menu entries and Windows uninstall registration.
+- Support updating the existing installation. Preserve personal documents, annotations, notes and settings when uninstalling.
+- Generate an exact uninstall file manifest so unrelated files in the installation folder are retained.
+- Keep the empty-library, credential-free distribution from beta.2.
+
 ## 1.0.0-beta.2 · 2026-10-31
 
 - Replace the composer send control with a solid circle and centered SVG arrow; match the stop control.

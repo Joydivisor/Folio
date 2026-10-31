@@ -4,6 +4,7 @@ node_modules/
 *.log
 dist/
 .electron-cache/
+.installer-cache/
 .env.*
 !.env.example
 *key*.txt
