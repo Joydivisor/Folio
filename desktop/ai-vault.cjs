@@ -12,9 +12,11 @@ function createVault(directory, crypto) {
   const file = path.join(directory, 'deepseek-key.bin');
   let key = '', persisted = false;
   const status = () => ({ configured: Boolean(key), persisted });
+  const protectedBackend = () => !['basic_text','unknown'].includes(crypto.getSelectedStorageBackend?.());
   return {
     status,
     async load() {
+      if(!protectedBackend())return status();
       try { key = await crypto.decryptStringAsync(await fs.readFile(file)); persisted = true; }
       catch { key = ''; persisted = false; }
       return status();
@@ -23,7 +25,7 @@ function createVault(directory, crypto) {
       if (typeof value !== 'string' || value.length > 512 || /[\r\n]/.test(value)) throw new Error('密钥格式不正确。');
       const next = value.trim() || key;
       if (remember && next) {
-        if (!await crypto.isAsyncEncryptionAvailable()) throw new Error('系统加密不可用；请取消本机保存，仅在本次运行使用。');
+        if (!protectedBackend() || !await crypto.isAsyncEncryptionAvailable()) throw new Error('系统密钥库不可用；请取消本机保存，仅在本次运行使用。');
         const encrypted = await crypto.encryptStringAsync(next);
         await fs.writeFile(file + '.tmp', encrypted);
         await fs.rename(file + '.tmp', file);

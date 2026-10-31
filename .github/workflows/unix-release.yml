@@ -1,0 +1,52 @@
+name: Build macOS and Linux
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            artifact: mac-arm64
+          - os: macos-15-intel
+            artifact: mac-x64
+          - os: ubuntu-22.04
+            artifact: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run package:unix
+      - name: Validate disk image and runtime on macOS
+        if: runner.os == 'macOS'
+        run: |
+          hdiutil verify releases/*.dmg
+          node scripts/smoke-desktop.mjs
+      - name: Install, launch and uninstall Debian package
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb ./releases/*.deb
+          FOLIO_SMOKE_EXECUTABLE=/opt/Folio/Folio xvfb-run -a node scripts/smoke-desktop.mjs
+          sudo apt-get remove -y folio
+          test ! -e /opt/Folio/Folio
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            releases/*.dmg
+            releases/*.deb
+            dist/v*/package-audit.json
+            dist/v*/runtime-smoke.json
+          if-no-files-found: error
+          retention-days: 7

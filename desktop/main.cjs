@@ -45,10 +45,11 @@ async function start() {
   mainWindow = new BrowserWindow({
     width, height, minWidth: 900, minHeight: 600, show: false,
     title: 'Folio', backgroundColor: '#f8f9fb',
-    icon: path.join(__dirname, '../build/folio.ico'),
-    titleBarStyle: 'hidden',
-    thickFrame: false,
-    titleBarOverlay: { color: '#f1f2f5', symbolColor: '#5b6471', height: 31 },
+    icon: path.join(__dirname, process.platform==='win32'?'../build/folio.ico':'../build/folio.png'),
+    ...(process.platform==='win32'?{
+      titleBarStyle: 'hidden', thickFrame: false,
+      titleBarOverlay: { color: '#f1f2f5', symbolColor: '#5b6471', height: 31 },
+    }:{}),
     roundedCorners: true,
     autoHideMenuBar: true,
     webPreferences: {
@@ -60,7 +61,11 @@ async function start() {
   const send = command => mainWindow?.webContents.send('folio:command', command);
   const {menus} = await import(pathToFileURL(path.join(__dirname, '../public/commands.js')).href);
   const {menuTemplate} = require('./menu.cjs');
-  const refreshMenu = language => Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate(menus,language,send)));
+  const refreshMenu = language => {
+    const template=menuTemplate(menus,language,send);
+    if(process.platform==='darwin')template.unshift({label:'Folio',submenu:[{role:'about'},{type:'separator'},{role:'services'},{type:'separator'},{role:'hide'},{role:'hideOthers'},{role:'unhide'},{type:'separator'},{role:'quit'}]});
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  };
   refreshMenu('zh-CN');
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url === 'https://api-docs.deepseek.com/quick_start/pricing/') shell.openExternal(url);
@@ -92,7 +97,7 @@ async function start() {
   handle('folio:theme', theme => {
     if (!['light', 'dark'].includes(theme)) throw new Error('外观设置无效。');
     nativeTheme.themeSource = theme;
-    mainWindow.setTitleBarOverlay({color:theme==='light'?'#f1f2f5':'#1d1e21',symbolColor:theme==='light'?'#5b6471':'#b0b3b9',height:31});
+    if(process.platform==='win32')mainWindow.setTitleBarOverlay({color:theme==='light'?'#f1f2f5':'#1d1e21',symbolColor:theme==='light'?'#5b6471':'#b0b3b9',height:31});
     mainWindow.setBackgroundColor(theme==='light'?'#f8f9fb':'#202124');
   });
   handle('folio:key-status', () => vault.status());
@@ -149,6 +154,7 @@ async function start() {
   if (saved.maximized) mainWindow.maximize();
   updateShape();
   mainWindow.show();
+  console.info('Folio window ready');
 }
 
 app.on('window-all-closed', () => app.quit());

@@ -278,6 +278,7 @@ $('documentContent').addEventListener('pointercancel',()=>{passageDrag=null;$('l
 // Desktop messages expose UI commands only; no Node or filesystem access in the page.
 if(window.folioDesktop){
  document.body.classList.add('desktop-app');
+ document.body.classList.add('desktop-'+window.folioDesktop.platform);
  window.folioDesktop.onWindowState(state=>{
   document.body.classList.toggle('window-maximized',state.maximized||state.fullscreen);
  });

@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "description": "Local-first interactive reading desk with DeepSeek and group theory experiments",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -9,7 +9,8 @@
     "check": "node --check server.mjs && node --check public/app.js && node --check public/groups.js && node --check desktop/main.cjs && node --check desktop/preload.cjs",
     "desktop": "node scripts/start-desktop.cjs",
     "package:win": "node scripts/package-desktop.mjs",
-    "installer:win": "node scripts/build-installer.mjs"
+    "installer:win": "node scripts/build-installer.mjs",
+    "package:unix": "node scripts/package-unix.mjs"
   },
   "keywords": [],
   "author": "",

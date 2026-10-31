@@ -28,3 +28,11 @@ test('graph rejects duplicate IDs, missing targets and oversized output',()=>{
   assert.throws(()=>parseGraph(JSON.stringify({...graph,edges:[{from:'a',to:'missing',label:'关系'}]})));
   assert.throws(()=>parseGraph('x'.repeat(40001)));
 });
+
+test('Linux plaintext fallback never persists or loads a credential', async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'folio-vault-linux-'));
+ let encrypted=false,decrypted=false;
+ const vault=vaultModule.createVault(dir,{getSelectedStorageBackend:()=> 'basic_text',isAsyncEncryptionAvailable:async()=>true,encryptStringAsync:async()=>{encrypted=true;return Buffer.from('weak');},decryptStringAsync:async()=>{decrypted=true;return 'secret';}});
+ try{await assert.rejects(vault.save('test-only-secret',true));await vault.load();assert.equal(encrypted,false);assert.equal(decrypted,false);await vault.save('test-only-secret',false);assert.deepEqual(vault.status(),{configured:true,persisted:false});}
+ finally{await rm(dir,{recursive:true,force:true});}
+});
