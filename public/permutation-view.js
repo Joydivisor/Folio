@@ -34,13 +34,18 @@ export function mountPermutation(host, original, onSave, saved){
  }
  function showStep(){state=[trace.initial,trace.intermediate,trace.result][stage];steps=stage;render();}
  function render(){
+  const period=permutationFacts(plan.sigma).order;
+  const candidates=[...(steps<=period?[steps]:[]),...Array.from({length:period+1},(_,i)=>i)];
+  const exponent=candidates.find(k=>permutationPower(plan.sigma,k).every((v,i)=>v===state[i]));
+  power=exponent??0;q('.power-slider').value=power;
+  q('.power-label').textContent=exponent===undefined?'当前为复合结果':'σ^'+exponent+' = '+cycles(state);
   q('.permutation-orbit').querySelectorAll('span').forEach((dot,i)=>dot.style.left=`calc(${state[i]*100/(plan.n-1)}% + ${16-state[i]*32/(plan.n-1)}px)`);
   const x=i=>30+i*330/(plan.n-1),label=state.map((v,i)=>(i+1)+' 映到 '+(v+1)).join('，');
   q('.permutation-diagram').innerHTML='<svg viewBox="0 0 390 195" class="perm-svg" role="img" aria-label="'+label+'"><defs>'+state.map((_,i)=>'<marker id="dynamicArrow'+i+'" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="'+colors[i]+'"/></marker>').join('')+'</defs>'+state.map((v,i)=>'<path class="mapping-line" d="M'+x(i)+' 45 C'+x(i)+' 86 '+x(v)+' 106 '+x(v)+' 146" stroke="'+colors[i]+'" stroke-width="2" opacity=".8" fill="none" marker-end="url(#dynamicArrow'+i+')"/>').join('')+state.map((_,i)=>'<circle cx="'+x(i)+'" cy="27" r="16" fill="'+colors[i]+'"/><text x="'+x(i)+'" y="32" text-anchor="middle" fill="white" font-size="13">'+(i+1)+'</text><circle cx="'+x(i)+'" cy="169" r="16" fill="none" stroke="'+colors[state.indexOf(i)]+'" stroke-width="1.5"/><text x="'+x(i)+'" y="174" text-anchor="middle" fill="var(--text)" font-size="13">'+(i+1)+'</text>').join('')+'</svg>';
   q('.math-result').textContent=(trace&&stage===2?productName+' = ':'')+cycles(state)+' · '+steps+' 次作用';
   const facts=permutationFacts(state);
   q('.artifact-metrics').innerHTML='<div><small>置换的阶</small><strong>'+facts.order+'</strong></div><div><small>奇偶性</small><strong>'+(facts.even?'偶置换':'奇置换')+'</strong></div><div><small>不动点</small><strong>'+(facts.fixed.join(', ')||'无')+'</strong></div>';
-  q('.verification').textContent=(edited?'使用手动修正的参数。':plan.verification?.corrected.length?'已按原文修正 '+plan.verification.corrected.join('、')+' 的映射。':plan.verification?.checked.length?'已核对原文 '+plan.verification.checked.join('、')+' 的循环记号。':'识别参数可在下方核对。')+'复合、阶与奇偶性由本地计算。';
+  q('.verification').textContent=(edited?'使用手动修正的参数。':plan.verification?.corrected?.length?'已按原文修正 '+plan.verification.corrected.join('、')+' 的映射。':plan.verification?.checked?.length?'已核对原文 '+plan.verification.checked.join('、')+' 的循环记号。':'识别参数可在下方核对。')+'复合、阶与奇偶性由本地计算。';
   q('.trace-section').hidden=!trace;
   if(trace){const first=plan.order==='right-first'?productName[1]:productName[0],second=plan.order==='right-first'?productName[0]:productName[1];
    q('.trace-actions span').textContent=['0 / 2 · 初始位置','1 / 2 · 先作用 '+first,'2 / 2 · 再作用 '+second][stage];
