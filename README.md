@@ -5,7 +5,7 @@
 ## 下载与运行
 
 - 下载页：https://getfolio.pages.dev/
-- Windows 发布：https://github.com/Joydivisor/Folio.github.io/releases
+- Windows 发布：https://github.com/Joydivisor/Folio-downloads/releases
 - 当前版本：**1.0.0-beta.3**。
 
 下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.3-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
@@ -69,6 +69,6 @@ npm run installer:win
 - `tests/`：数学、来源验证、模型代理与交互状态测试。
 - `build/`：应用图标。
 
-应用源码仓库为私有。公开下载站另存于 `Joydivisor/Folio.github.io`，只维护网站与发布文件。桌面程序分发其运行所需的客户端代码，私有仓库不等同于客户端代码不可提取。
+应用源码仓库为私有。下载站源码另存于私有仓库 `Joydivisor/Folio.github.io`；公开安装包与校验文件放在 `Joydivisor/Folio-downloads`，访客下载无需登录。桌面程序分发其运行所需的客户端代码，私有仓库不等同于客户端代码不可提取。
 
 第三方依赖的许可随软件包分发；应用自身未授予开源许可。
