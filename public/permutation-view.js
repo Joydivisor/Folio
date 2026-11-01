@@ -6,7 +6,7 @@ export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
  let plan={...original},state=identity(plan.n),steps=0,trace=null,stage=0,productName='',edited=false;
  if(saved){const valid=validatePermutationSnapshot(saved);plan=valid.plan;state=valid.state;steps=valid.steps;}
  let timer=null,power=0;
- host.innerHTML=`<div class="visual-heading"><small>PERMUTATION · 置换实验</small><h2></h2><p></p></div>
+ host.innerHTML=`<div class="visual-heading"><h2></h2><p></p></div>
  <div class="permutation-diagram"></div><div class="artifact-legend"></div><div class="operation-row"></div><div class="compare-grid" style="margin-top:12px"></div>
  <div class="permutation-orbit" aria-label="元素位置动画"></div><section class="artifact-section power-section"><label>重复作用 σ <input class="power-slider" type="range" min="0" value="0"><output class="power-label"></output></label><button class="power-play">播放一个周期</button></section>
  <div class="math-result" aria-live="polite"></div><div class="artifact-metrics"></div>

@@ -42,10 +42,9 @@ export function parseReading(raw,excerpts=[],{strictPlan=false,question=''}={}){
 }
 export function mountReadingAnswer(host,answer,{onPage,onSave}={}){
  const section=document.createElement('section');section.className='reading-answer';
- const eyebrow=document.createElement('small');eyebrow.textContent='READING · 原文解读';
- const title=document.createElement('h2');title.textContent=answer.title;section.append(eyebrow,title);
+ const title=document.createElement('h2');title.textContent=answer.title;section.append(title);
  for(const paragraph of answer.paragraphs){const p=document.createElement('p');p.textContent=paragraph.text;section.append(p);if(paragraph.sources.length){const citations=document.createElement('div');citations.className='answer-citations';for(const s of paragraph.sources){const b=document.createElement('button');b.textContent='第 '+s.page+' 页 ↗';b.title=s.quote;b.onclick=()=>onPage?.(s.page);citations.append(b);}section.append(citations);}}
  if(answer.nextQuestion){const p=document.createElement('p');p.className='answer-next';p.textContent=answer.nextQuestion;section.append(p);}
- const save=document.createElement('button');save.className='text-button';save.textContent='保存这段解读';save.onclick=()=>onSave?.(answer.title+'\n\n'+answer.paragraphs.map(p=>p.text+(p.sources.length?'\n'+p.sources.map(s=>'第 '+s.page+' 页：'+s.quote).join('\n'):'')).join('\n\n'));section.append(save);
+ if(onSave){const save=document.createElement('button');save.className='text-button';save.textContent='保存这段解读';save.onclick=()=>onSave?.(answer.title+'\n\n'+answer.paragraphs.map(p=>p.text+(p.sources.length?'\n'+p.sources.map(s=>'第 '+s.page+' 页：'+s.quote).join('\n'):'')).join('\n\n'));section.append(save);}
  host.prepend(section);return section;
 }

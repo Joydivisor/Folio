@@ -13,4 +13,6 @@ Security review on 2026-11-01: runtime npm audit reports zero known vulnerabilit
 
 Download diagnosis: website is on Cloudflare Pages, installers redirect to release-assets.githubusercontent.com. Local 2 MiB range probes: macOS arm64 0.138 MiB/s; macOS x64 0.188 MiB/s. Results reflect this route and a small sample, not a nationwide speed guarantee. Cloudflare R2 API reports that the account has not enabled R2; no billing subscription or mirror has been created.
 
-beta.6 packaging and publication: pending native builds and final payload checks.
+beta.6 published on 2026-11-01 from runtime commit a8c4f40. Native CI run 41284268726 passed on macOS arm64, macOS Intel and Ubuntu 22.04. Windows installer integration passed 12/12 checks. Final four asset sizes and SHA-256 digests match the public GitHub assets; checksum file verified. Both getfolio.pages.dev and the GitHub Pages site serve beta.6; all four installer range probes returned 206 with the expected 1024 bytes. Final Defender scan of releases reported zero matching detections.
+
+Post-release UI refinement (source only): removed always-visible artifact type/save labels, implementation badges, redundant English eyebrows, generic library/reader instructions and repeated settings copy. Primary actions remain Save to notes, Source, More. Preserved citations, mathematical conventions, errors and credential/privacy state. This subsequent refinement is not part of the already published beta.6 installers.
