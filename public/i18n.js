@@ -1,5 +1,9 @@
 // Interface strings only. Documents, answers, quotes and authored notes are never translated.
 export const dictionary = Object.fromEntries(`
+框选|Select area
+框选原文|Select source region
+导出 Markdown|Export Markdown
+预览|Preview
 阅读与记忆偏好|Reading & memory preferences
 模型服务|Model provider
 使用模型|Model
@@ -238,7 +242,7 @@ export function language(){return resolveLanguage(choice,navigator.language);}
 export function t(zh){return translate(zh,language());}
 export function languageChoice(){return choice;}
 const textHistory=new WeakMap(),attrHistory=new WeakMap();
-const protectedContent='#documentContent,.reading-answer,.notebook-prose,.note-editor,.annotation-excerpt,.note-card>p,#notebookDetail>h2,#notebookDetail details p,#notebookDetail details h3,#notebookDetail pre,.notebook-item strong,.note-breadcrumb,#documentTitle,#readerTabTitle,.document-name,.document-location,#folderTree button,#folderName,#quoteText,#quoteSource,#conversationTopic,#sourceContext,#analysisSummary,#visualStage>:not(.canvas-empty):not(.visual-loading):not(.visual-error),#messages,textarea,input,script,style,code,pre,[contenteditable="true"],[data-no-i18n]';
+const protectedContent='#documentContent,.reading-answer,.notebook-prose,.note-editor,.annotation-excerpt,.note-card>p,.note-card>h3,#notebookDetail>h2,#notebookDetail details p,#notebookDetail details h3,#notebookDetail pre,.notebook-item strong,.note-breadcrumb,#documentTitle,#readerTabTitle,.document-name,.document-location,#folderTree button,#folderName,#quoteText,#quoteSource,#conversationTopic,#sourceContext,#analysisSummary,#visualStage>:not(.canvas-empty):not(.visual-loading):not(.visual-error),#messages,textarea,input,script,style,code,pre,[contenteditable="true"],[data-no-i18n]';
 function updateValue(value,history){const original=history&&value===history.last?history.original:value;const core=original.trim();const translated=t(core);return {original,last:translated===core?original:original.replace(core,translated)};}
 export function localize(root=document.body){
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;

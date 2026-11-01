@@ -63,6 +63,8 @@ export function makeServer({fetchImpl = fetch, port = defaultPort, sessionKey = 
    const decoded=decodeURIComponent(pathname);
    let base=path.join(root,'public'); let rel=decoded === '/' ? 'index.html' : decoded.slice(1);
    if (decoded.startsWith('/vendor/')) {base=path.join(root,'node_modules','pdfjs-dist');rel=decoded.slice(8);}
+   if(decoded==='/note-vendor/markdown.js'){base=path.join(root,'node_modules','markdown-it','dist','browser');rel='markdown-it.esm.min.mjs';}
+   if(decoded==='/note-vendor/fflate.js'){base=path.join(root,'node_modules','fflate','esm');rel='browser.js';}
    if (decoded.startsWith('/katex/')) {base=path.join(root,'node_modules','katex','dist');rel=decoded.slice(7);}
    if(decoded.startsWith('/ocr/')){base=path.join(root,'node_modules','tesseract.js','dist');rel=decoded.slice(5);}
    if(decoded.startsWith('/ocr-core/')){base=path.join(root,'node_modules','tesseract.js-core');rel=decoded.slice(10);}
