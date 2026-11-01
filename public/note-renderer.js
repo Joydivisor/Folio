@@ -32,3 +32,10 @@ export async function exportNotesMarkdown(notes,getRegion,{bundle=false}={}){
  }
  download('Folio-notes.zip',new Blob([zipSync(files,{level:3})],{type:'application/zip'}));
 }
+
+export async function validateNoteMath(text){
+ parser??=createNoteMarkdown(MarkdownIt);
+ const {default:katex}=await import('/katex/katex.mjs');
+ function visit(tokens){for(const token of tokens){if(token.type==='folio_math'||token.type==='folio_math_block'){const delimiter=token.content.startsWith('$$')?'$$':'$';try{katex.renderToString(token.content.slice(delimiter.length,-delimiter.length).trim(),{throwOnError:true,trust:false,strict:'ignore'});}catch{throw Error(ui('公式格式需要修正，请在 Markdown 编辑中检查：','Please correct this formula in the Markdown editor: ')+token.content.slice(0,140));}}if(token.children)visit(token.children);}}
+ visit(parser.parse(normalizeLatex(text),{}));
+}

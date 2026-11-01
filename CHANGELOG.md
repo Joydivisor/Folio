@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0-beta.8 · 2026-11-01
+
+- Open supported interactive results directly, with an Explanation / Presentation switch that does not request another model answer.
+- Surface contextual learning actions such as step-by-step reasoning and permutation demonstrations below results; keep version management in More.
+- Prefer appropriate derivations, comparison tables and supported experiments, with concise introductions and a bounded repair when a clear request receives only prose.
+- Organize reading results into editable Markdown/LaTeX study notes before saving. Preserve source links and experiment snapshots; allow cancellation or keeping the original answer.
+- Check delimited formula syntax before saving, without claiming to verify mathematical truth.
+- Include the locally tested beta.7 upgrades: adjustable region selection, editable selected text, Markdown note previews and Obsidian-compatible exports.
+- Retain existing documents, notes and protected model credentials across upgrades. No test keys, private documents or development fixtures are bundled.
+
+Validation: 84 automated tests, five live DeepSeek reading cases, note-rendering and end-to-end UI checks, and 12 Windows installation checks. macOS and Linux packages are built and smoke-tested on their respective CI runners before publication.
+
 ## 1.0.0-beta.4 · 2026-11-01
 
 - Add macOS Apple Silicon and Intel disk images and a Linux x64 Debian package.

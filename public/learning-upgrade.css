@@ -1,0 +1,22 @@
+.artifact-toolbar{justify-content:space-between;gap:12px;margin-bottom:20px}
+.artifact-primary-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.artifact-view-switch{display:flex;align-items:center;padding:3px;gap:2px;background:var(--hover);border-radius:11px}
+.artifact-toolbar .artifact-view-switch button{min-height:32px;border:0;background:transparent;border-radius:8px;padding:5px 12px;color:var(--muted);box-shadow:none}
+.artifact-toolbar .artifact-view-switch button[aria-pressed=true]{background:var(--pane);color:var(--text);box-shadow:0 1px 3px #00000012}
+.artifact-content>[hidden]{display:none!important}
+.artifact-content .artifact-renderer{margin-top:0}
+.learning-next-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;margin:22px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
+.learning-next-actions button{font:inherit;font-size:13px;min-height:36px;padding:6px 2px;background:none;border:0;box-shadow:none;color:var(--accent);cursor:pointer}
+.learning-next-actions button::after{content:' ↗';margin-left:5px}
+.learning-next-actions button:disabled{opacity:.5;cursor:wait}
+.learning-next-actions button:hover{text-decoration:underline;text-underline-offset:4px}
+.artifact-view-switch button:focus-visible,.learning-next-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.study-note-dialog .workspace-dialog-body{gap:16px}
+.study-note-dialog .study-note-source{margin:0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.study-note-dialog .study-note-status{margin:0;font-size:13px;line-height:1.6}
+.study-note-dialog .study-note-status:empty{display:none}
+.study-note-dialog .notebook-prose{min-height:160px;padding:8px 0;overflow-wrap:anywhere}
+.study-note-dialog textarea{min-height:280px;width:100%;box-sizing:border-box;font:13px/1.8 Consolas,monospace}
+.study-note-dialog .workspace-actions{position:sticky;bottom:-24px;background:var(--pane);padding:14px 0 8px;border-top:1px solid var(--line)}
+.study-note-dialog .study-note-save{margin-left:auto;background:var(--text);color:var(--pane);border-color:transparent}
+@media(max-width:1000px){.artifact-toolbar{gap:10px}.artifact-primary-actions{gap:4px}.artifact-toolbar button{padding:5px 9px}.artifact-view-switch{flex-shrink:0}}

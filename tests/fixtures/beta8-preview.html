@@ -1,0 +1,29 @@
+<!doctype html><html data-theme="light"><meta charset="utf-8"><title>Folio beta.8 · Local acceptance</title>
+<link rel="stylesheet" href="/workspace.css"><link rel="stylesheet" href="/appearance.css"><link rel="stylesheet" href="/integrated.css"><link rel="stylesheet" href="/notes-selection.css"><link rel="stylesheet" href="/learning-upgrade.css"><link rel="stylesheet" href="/katex/katex.min.css">
+<style>body{overflow:auto;padding:24px}#qa{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}#host{width:min(580px,100%);margin:auto;background:var(--pane);padding:24px;border-radius:18px;box-sizing:border-box}#host.narrow{width:350px}#checks{max-width:580px;margin:20px auto;font:13px/1.7 system-ui}#qa button{padding:8px 12px;border:1px solid var(--line);background:var(--pane)}#host .permutation-artifact{margin:0} </style>
+<nav id="qa"><button id="permutation">置换结果</button><button id="proof">推导结果</button><button id="geometry">3D 结果</button><button id="narrow">切换窄栏</button><button id="theme">切换明暗</button><button id="cancelTest">测试取消整理</button></nav><div id="host"></div><p id="checks" role="status"></p>
+<script type="module">
+import {createArtifactWorkspace} from '/artifact-workspace.js';
+import {createArtifact} from '/artifact-history.js';
+import {mountReadingAnswer} from '/reading-response.js';
+import {mountPermutation} from '/permutation-view.js';
+import {mountGeometry} from '/geometry-view.js';
+import {mountDisplay} from '/display-view.js';
+import {openStudyNote} from '/study-note-dialog.js';
+import {validateNoteMath} from '/note-renderer.js';
+import renderMath from '/katex/contrib/auto-render.mjs';
+const host=document.querySelector('#host'),checks=document.querySelector('#checks');
+const report=await(await fetch('/beta8-results')).json();let saves=0,requests=0;
+const math=el=>renderMath(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],trust:false,throwOnError:false});
+const defaultProof={kind:'derivation',object:'元素的阶整除群阶',reason:'分步证明',steps:[{title:'循环子群',text:'$|\\langle g\\rangle|=o(g)$',basis:'deduction'},{title:'应用拉格朗日定理',text:'$o(g)\\mid |G|$',basis:'deduction'}]};
+const fixture=id=>{const r=report.results.find(r=>r.id===id);return createArtifact({name:'群论阅读测试',page:7,text:'有限群 G，g ∈ G。循环子群的阶等于元素的阶。'},id==='automatic-proof'?defaultProof:id==='automatic-permutation'?{kind:'permutation',object:'置换 σ=(1 2 3)',reason:'重复作用',n:3,sigma:[1,2,0],order:'right-first'}:r.plan,r.answer);};
+const workspace=createArtifactWorkspace({store:{put:async()=>{}},host,onSource:()=>{},onSave:record=>openStudyNote(record,{ask:async()=>JSON.stringify(report.results.find(r=>r.note).note),renderMath:math,onSave:(draft,snapshot)=>{saves++;checks.textContent='已保存 '+saves+' 条；来源 '+snapshot.source.name+' / '+snapshot.source.page+'；标题 '+draft.title;}}),onRequestView:kind=>{requests++;checks.textContent='请求 '+kind+'，共 '+requests+' 次';},render:async(host,v,source,onState)=>{const answer=mountReadingAnswer(host,v.answer);math(answer);const stage=document.createElement('div');stage.className='artifact-renderer';host.append(stage);if(v.plan.kind==='permutation')return mountPermutation(stage,v.plan,()=>{},undefined,onState);if(v.plan.kind==='geometry')return mountGeometry(stage,v.plan,{onState});return mountDisplay(stage,v.plan,{renderMath:math,onState});}});
+document.querySelector('#permutation').onclick=()=>workspace.show(fixture('automatic-permutation'));
+document.querySelector('#proof').onclick=()=>workspace.show(fixture('automatic-proof'));
+document.querySelector('#geometry').onclick=()=>workspace.show(fixture('automatic-geometry'));
+document.querySelector('#narrow').onclick=()=>host.classList.toggle('narrow');
+document.querySelector('#theme').onclick=()=>document.documentElement.dataset.theme=document.documentElement.dataset.theme==='light'?'dark':'light';
+document.querySelector('#cancelTest').onclick=async()=>{let resolve;const pending=new Promise(r=>resolve=r);const dialog=openStudyNote(fixture('automatic-proof'),{ask:()=>pending,renderMath:math,onSave:()=>{saves++;}});const closeEvent=new Promise(r=>dialog.addEventListener('close',r,{once:true}));dialog.close();resolve(JSON.stringify({title:'Late result',markdown:'Should not save'}));await closeEvent;checks.textContent='取消后未保存：'+(saves===0)+'；残留对话框：'+document.querySelectorAll('dialog').length;};
+await workspace.show(fixture('automatic-permutation'));
+try{await validateNoteMath('$\\notARealCommand{x}$');checks.textContent='FAIL: invalid math accepted';}catch{checks.textContent='公式校验：无效 LaTeX 已被拦截';}
+</script></html>

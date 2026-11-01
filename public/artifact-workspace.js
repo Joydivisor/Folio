@@ -1,3 +1,4 @@
+import {learningActions,hasPresentation} from './learning-actions.js';
 import {createArtifact,currentVersion,reviseArtifact,moveVersion} from './artifact-history.js';
 import {ui,node,button,modal} from './workspace-ui.js';
 import {DISPLAY_KINDS,parseDisplayPlan} from './display-plan.js';
@@ -10,14 +11,24 @@ export function createArtifactWorkspace({store,host,render,onSave,onSource,onOpe
  function state(value){if(!active)return;active.versions[active.cursor].interaction=structuredClone(value);clearTimeout(timer);const record=structuredClone(active);timer=setTimeout(()=>store.put('artifacts',record).catch(console.error),300);}
  async function show(record){cleanup?.();cleanup=null;clearTimeout(timer);active=structuredClone(record);const token=++renderId,version=currentVersion(active);host.replaceChildren();const toolbar=node('div',undefined,{className:'artifact-toolbar'}),stage=node('div',undefined,{className:'artifact-content'});host.append(toolbar,stage);
   const actions=node('div',undefined,{className:'artifact-primary-actions'});
-  const saveNote=button(ui('存为笔记','Save to notes'),async()=>{await persist();onSave(active);}),source=button(ui('原文 ↗','Source ↗'),()=>onSource(active.source)),more=button('···',options);more.title=ui('更多选项','More options');more.setAttribute('aria-label',more.title);more.className='artifact-more';source.hidden=!active.source?.id&&!active.source?.documentId;
+  const saveNote=button(ui('存为笔记','Save to notes'),async()=>{await persist();await onSave(structuredClone(active));}),source=button(ui('原文 ↗','Source ↗'),()=>onSource(active.source)),more=button('···',options);more.title=ui('更多选项','More options');more.setAttribute('aria-label',more.title);more.className='artifact-more';source.hidden=!active.source?.id&&!active.source?.documentId;
   actions.append(saveNote,source,more);toolbar.append(actions);
   function options(){const {root,body}=modal(ui('结果选项','Result options'));
    body.append(button(ui('编辑内容与参数','Edit content and parameters'),()=>{root.close();return edit();}),button(ui('为当前状态命名','Name this snapshot'),()=>{root.close();const {root:dialog,body:fields}=modal(ui('命名版本','Name version')),name=node('input',undefined,{value:ui('实验快照','Experiment snapshot')});fields.append(name,button(ui('保存','Save'),async()=>{const next=reviseArtifact(active,currentVersion(active).id,{interaction:currentVersion(active).interaction},name.value);dialog.close();await show(next);}));}));
    if(active.versions.length>1){const history=node('select');history.setAttribute('aria-label',ui('版本历史','Version history'));active.versions.forEach((v,i)=>history.append(node('option',(i+1)+' · '+(v.label==='Initial'?ui('首次生成','Initial result'):v.label),{value:String(i),selected:i===active.cursor})));history.onchange=()=>{root.close();return show(moveVersion(active,Number(history.value)));};body.append(node('label',ui('版本历史','Version history')),history);const undo=button(ui('撤销修改','Undo change'),()=>{root.close();return show(moveVersion(active,active.cursor-1));}),redo=button(ui('重做修改','Redo change'),()=>{root.close();return show(moveVersion(active,active.cursor+1));});undo.disabled=active.cursor===0;redo.disabled=active.cursor===active.versions.length-1;body.append(undo,redo);}
-   const views=node('div',undefined,{className:'workspace-actions'});for(const [value,label] of [['current',ui('显示完整结果','Show full result')],['explain',ui('只看解读','Explanation only')],['derivation',ui('改为分步推导','Request steps')],['comparison',ui('改为对比表','Request comparison')],['concept',ui('改为关系图','Request concept map')]])views.append(button(label,()=>{root.close();if(value==='explain'||value==='current')stage.querySelectorAll('.artifact-renderer').forEach(el=>el.hidden=value==='explain');else onRequestView?.(value);}));body.append(node('label',ui('展示方式','Representation')),views);
+
   }
-  const dispose=await render(stage,version,active.source,value=>{if(token===renderId)state(value);});if(token!==renderId){dispose?.();return;}cleanup=dispose;await persist();
+  const dispose=await render(stage,version,active.source,value=>{if(token===renderId)state(value);});if(token!==renderId){dispose?.();return;}cleanup=dispose;
+  const answer=stage.querySelector('.reading-answer'),visual=stage.querySelector('.artifact-renderer');
+  if(hasPresentation(version)&&answer&&visual){
+   const switcher=node('div',undefined,{className:'artifact-view-switch'});switcher.setAttribute('role','group');switcher.setAttribute('aria-label',ui('查看结果','View result'));
+   const explanation=button(ui('解读','Explanation'),()=>select(false)),presentation=button(ui('演示','Presentation'),()=>select(true));
+   function select(show){answer.hidden=show;visual.hidden=!show;explanation.setAttribute('aria-pressed',String(!show));presentation.setAttribute('aria-pressed',String(show));}
+   switcher.append(explanation,presentation);toolbar.prepend(switcher);select(true);
+  }else if(visual)visual.hidden=true;
+  const next=node('div',undefined,{className:'learning-next-actions'});next.setAttribute('aria-label',ui('继续探索','Explore further'));
+  for(const action of learningActions(version.plan,active.source))next.append(button(ui(action.zh,action.en),async()=>{if(token!==renderId)return;next.querySelectorAll('button').forEach(b=>b.disabled=true);try{await onRequestView?.(action.kind);}finally{if(token===renderId)next.querySelectorAll('button').forEach(b=>b.disabled=false);}}));
+  host.append(next);await persist();
  }
  async function edit(){if(!active)return;const base=currentVersion(active),original=structuredClone(active),{root,body}=modal(ui('修改作品','Edit artifact')),text=node('textarea',undefined,{value:base.answer.paragraphs.map(p=>p.text).join('\n\n')}),label=node('input',undefined,{value:base.plan.object});body.append(node('label',ui('标题','Title')),label,node('label',ui('解读内容','Explanation')),text);const fields={};function field(key,title,value){const input=node('input',undefined,{value:String(value)});body.append(node('label',title),input);fields[key]=input;}
   if(base.plan.kind==='permutation'){field('sigma','σ',base.plan.sigma.map(n=>n+1).join(', '));field('tau','τ',base.plan.tau?.map(n=>n+1).join(', ')||'');}
