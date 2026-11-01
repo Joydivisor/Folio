@@ -17,3 +17,5 @@ Final runtime commit: b65fc31. Native CI run: 41276214746. The final Zotero atta
 - Source/runtime privacy audit: no credential matches, no test/demo documents, no user profiles and only allowlisted package roots.
 
 Boundaries: printed Chinese/English OCR with manual correction; one-way Zotero RDF import; bounded geometry/group renderers; explicit downloads/manual updates. Windows remains unsigned and macOS is ad-hoc signed, not Developer ID signed/notarized. No ChatGPT OAuth integration is claimed.
+
+Publication: beta.5 public release contains four installers plus SHA256SUMS.txt. Remote asset sizes/digests match the final local manifest; all four anonymous range-download probes returned 206 with 1024 bytes. Cloudflare Pages and the GitHub Pages mirror both returned beta.5 with matching checksums and English-default markup.
