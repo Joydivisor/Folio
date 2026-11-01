@@ -13,7 +13,7 @@ Positioning: a local-first interactive reading workspace, grounded in the user's
 
 ## Next reading upgrades — integrated release proposal, 2026-11-01
 
-Status: beta.5 implementation integrated; acceptance and platform packaging are in progress. Deliver the six workstreams together after integrated acceptance, with incremental internal checkpoints. Keep beta.4 available until the release passes. No release date or universal model-accuracy guarantee is implied.
+Status: beta.5 implemented and acceptance completed; release publication is in progress. See ACCEPTANCE_BETA5.md for checks and the sampled-model limitations. Deliver the six workstreams together after integrated acceptance, with incremental internal checkpoints. Keep beta.4 available until the release passes. No release date or universal model-accuracy guarantee is implied.
 
 Product target: import a document, find a passage, understand it in context, interact with the appropriate representation, save and revise the result, then return to the exact source after reopening or restoring a backup.
 
