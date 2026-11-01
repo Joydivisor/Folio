@@ -1,5 +1,15 @@
 // Interface strings only. Documents, answers, quotes and authored notes are never translated.
 export const dictionary = Object.fromEntries(`
+阅读与记忆偏好|Reading & memory preferences
+模型服务|Model provider
+使用模型|Model
+连接并获取模型|Connect & load models
+在本机加密保存，重启后继续使用|Save encrypted on this device for future sessions
+清除此服务密钥|Remove this provider’s key
+模型 ID|Model ID
+测试模型调用|Test model access
+保存并使用|Save & use
+粘贴此服务的 API Key|Paste this provider’s API key
 已识别密钥，点击测试连接后验证。|Key detected. Test the connection to verify it.
 粘贴密钥，或包含密钥的一段文本|Paste a key or text containing one
 恢复交互实验|Restore interactive experiment

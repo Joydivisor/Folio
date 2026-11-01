@@ -9,7 +9,7 @@ export function enhanceSelects() {
     const menu=document.createElement('div');menu.className='select-menu';menu.popover='auto';menu.id=select.id+'-menu';
     menu.setAttribute('role','listbox');menu.setAttribute('aria-label',trigger.getAttribute('aria-label'));
     trigger.setAttribute('aria-controls',menu.id);
-    select.hidden=true;select.after(trigger);document.body.append(menu);
+    select.hidden=true;select.after(trigger);(select.closest('dialog')||document.body).append(menu);
     const sync=()=>{trigger.textContent=select.selectedOptions[0]?.textContent||'选择';trigger.disabled=select.disabled;};
     syncers.push(sync);sync();new MutationObserver(sync).observe(select,{childList:true,subtree:true,attributes:true});
     select.addEventListener('change',sync);

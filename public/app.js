@@ -1,3 +1,5 @@
+import {setupModelSettings} from './model-settings.js';
+import {normalizeEndpoint} from './model-providers.js';
 import {createArtifactWorkspace} from './artifact-workspace.js';
 import {mountDisplay} from './display-view.js';
 import {mountGeometry} from './geometry-view.js';
@@ -17,7 +19,6 @@ import {requestReading,parseReading,mountReadingAnswer} from './reading-response
 import {sourceLabel} from './source-label.js';
 import {verifyPlanAgainstSource} from './source-verification.js';
 import {mountConcept} from './concept-view.js';
-import {extractCredential} from './credential-input.js';
 import {contextBelongsToSource} from './selection-source.js';
 import {validatePermutationSnapshot} from './permutation-state.js';
 import {setupAnnotations} from './annotations.js';
@@ -45,7 +46,7 @@ let requestController=null;
 let rememberConversations=readLocal('folio-remember-conversations',false)===true;
 const conversations=createConversations({enabled:()=>rememberConversations,save:note=>{const index=notes.findIndex(n=>n.id===note.id);if(index>=0)notes[index]=note;else notes.unshift(note);saveLocal('jianwei-notes',notes);renderNotes();}});
 let desktopKey={configured:false,persisted:false},serverKey=false;
-const hasKey=()=>Boolean(settings.apiKey||desktopKey.configured||serverKey);
+const hasKey=()=>Boolean(settings.apiKey||desktopKey.configured||(serverKey&&normalizeEndpoint(settings.baseUrl)==='https://api.deepseek.com'));
 let settings={baseUrl:'https://api.deepseek.com',model:'deepseek-flash',thinking:false,...readLocal('jianwei-settings',{}),apiKey:''};
 let mathRenderer=null;
 import('/katex/contrib/auto-render.mjs').then(m=>{mathRenderer=m.default;document.querySelectorAll('.reading-answer,.notebook-prose,#notebookDetail details').forEach(renderMath);}).catch(()=>{});
@@ -150,24 +151,15 @@ $('documentContent').ondragstart=e=>{const s=getSelection()?.toString().trim().s
 $('documentContent').ondragend=()=>{readerDrag=null;};
 function setTab(tab){document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));for(const t of ['chat','lab','notes','visual'])$(t+'Panel').hidden=t!==tab;if(tab==='notes')renderNotes();}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-function settingsToForm(){$('baseUrl').value=settings.baseUrl;$('modelName').value=settings.model;$('apiKey').value=settings.apiKey;$('thinkingMode').checked=settings.thinking;}
-function readSettingsForm(){return {baseUrl:$('baseUrl').value.trim().replace(/\/$/,''),model:$('modelName').value.trim(),apiKey:extractCredential($('apiKey').value),thinking:$('thinkingMode').checked};}
-$('apiKey').addEventListener('paste',e=>{const text=e.clipboardData?.getData('text');if(!text)return;e.preventDefault();try{$('apiKey').value=extractCredential(text);$('connectionResult').textContent=t('已识别密钥，点击测试连接后验证。');}catch(error){$('apiKey').value='';$('connectionResult').textContent=t(error.message);}});
-function updateModel(){$('modelStatus').textContent=(settings.model==='deepseek-flash'?'DeepSeek Flash':settings.model)+(hasKey()?(language()==='en'?' · Connected':' · 已配置'):(language()==='en'?' · Not connected':' · 未连接'));}
-for(const id of ['settingsButton','modelButton'])$(id).onclick=()=>{settingsToForm();$('settingsDialog').showModal();};
-async function saveSettings(){
- const next=readSettingsForm();
- if(window.folioDesktop){
-  if(!/^https:\/\/api\.deepseek\.com(?:\/v1)?\/?$/.test(next.baseUrl))throw new Error('桌面版密钥仅用于 DeepSeek 官方地址。');
-  desktopKey=await window.folioDesktop.saveKey(next.apiKey,$('rememberKey').checked);next.apiKey='';$('apiKey').value='';
- }
- settings=next;const {apiKey,...persist}=settings;saveLocal('jianwei-settings',persist);updateModel();
-}
-$('settingsForm').onsubmit=async e=>{e.preventDefault();if(document.querySelector('[data-pref-panel=ai]').hidden)return;try{await saveSettings();$('settingsDialog').close();toast(window.folioDesktop?(desktopKey.persisted?'密钥已在本机加密保存。':'密钥仅在本次应用运行有效。'):serverKey?'设置已保存；密钥仍由本机服务托管。':'密钥仅在当前页面有效。');}catch(error){$('connectionResult').textContent=error.message;}};
+function updateModel(){$('modelStatus').textContent=(settings.model==='deepseek-flash'?'DeepSeek Flash':settings.model)+(hasKey()?(language()==='en'?' · Configured':' · 已配置'):(language()==='en'?' · Not connected':' · 未连接'));}
+const modelSettings=setupModelSettings({getSettings:()=>settings,onSaved:next=>{settings=next;const {apiKey,...persist}=next;saveLocal('jianwei-settings',persist);updateModel();},onStatus:status=>{desktopKey=status;updateModel();}});
+for(const id of ['settingsButton','modelButton'])$(id).onclick=()=>{modelSettings.open();$('settingsDialog').showModal();};
+const keyReady=modelSettings.ready().catch(()=>{});
 async function askAPI(config,messages,signal){
  if(config.responseFormat==='json')config={...config,answerLanguage:readLocal('folio-answer-language','auto')};
 
  if(window.folioDesktop){
+  await keyReady;
   if(signal?.aborted)throw new DOMException('已停止','AbortError');
   const id=crypto.randomUUID();const cancel=()=>window.folioDesktop.cancelAI(id).catch(()=>{});signal?.addEventListener('abort',cancel,{once:true});
   try{return await window.folioDesktop.requestAI({id,config:{baseUrl:config.baseUrl,model:config.model,thinking:config.thinking,responseFormat:config.responseFormat,answerLanguage:config.answerLanguage},messages});}
@@ -175,7 +167,6 @@ async function askAPI(config,messages,signal){
  }
  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...config,messages}),signal});const data=await res.json();if(!res.ok)throw new Error(data.error||'请求失败');return data.content;
 }
-$('testConnection').onclick=async()=>{const button=$('testConnection');button.disabled=true;$('connectionResult').textContent='正在连接模型…';try{if(window.folioDesktop)await saveSettings();const answer=await askAPI(readSettingsForm(),[{role:'user',content:'只回复“连接成功”。'}]);$('connectionResult').textContent=t('连接成功')+' · '+answer.slice(0,70);}catch(e){$('connectionResult').textContent=e.message;}finally{button.disabled=false;}};
 $('prompt').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('chatForm').requestSubmit();}};
 function addNote(text,source,artifact){notes.unshift({id:crypto.randomUUID(),text,source,...(artifact?{artifact:structuredClone(artifact)}:{}),date:new Date().toLocaleString('zh-CN')});saveLocal('jianwei-notes',notes);renderNotes();toast('已存入笔记');}
 function renderNotes(){if(typeof notebook!=='undefined')notebook.render();$('globalNoteCount').textContent=notes.length;$('noteCount').textContent=notes.length;$('notesList').innerHTML=notes.length?'':'<div class="empty-state">还没有笔记。<br>把一次回答或实验保存下来，慢慢形成自己的理解。</div>';for(const note of notes){const card=document.createElement('article');card.className='note-card';const meta=document.createElement('div');meta.className='note-meta';meta.textContent=note.date+(note.question?' · '+note.question:'');const p=document.createElement('p');p.textContent=note.text;card.append(meta,p);if(note.source?.id){const source=document.createElement('button');source.className='note-source';source.textContent='↗ '+sourceLabel(note.source);source.onclick=guard(()=>openSource(note.source));card.append(source);}const actions=document.createElement('div');actions.className='note-actions';const edit=document.createElement('button');edit.textContent='编辑';edit.onclick=()=>{if(p.contentEditable==='true'){note.text=p.textContent;saveLocal('jianwei-notes',notes);p.contentEditable='false';edit.textContent='编辑';}else{p.contentEditable='true';p.focus();edit.textContent='保存';}};const del=document.createElement('button');del.textContent='删除';del.onclick=()=>{notes.splice(notes.findIndex(n=>n.id===note.id),1);saveLocal('jianwei-notes',notes);renderNotes();};actions.append(edit,del);card.append(actions);$('notesList').append(card);}}
@@ -192,7 +183,7 @@ $('saveExperiment').onclick=()=>addNote('导出列实验\n'+layers.map(g=>groupL
 let resize=false;$('divider').onpointerdown=e=>{resize=true;$('divider').setPointerCapture(e.pointerId);document.body.classList.add('resize-active');};$('divider').onpointermove=e=>{if(resize)document.documentElement.style.setProperty('--left',Math.max(30,Math.min(65,(innerWidth-e.clientX)/innerWidth*100))+'%');};$('divider').onpointerup=guard(async()=>{resize=false;document.body.classList.remove('resize-active');if(pdf)await renderPage();});$('divider').onkeydown=e=>{if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();const cur=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--left'));document.documentElement.style.setProperty('--left',Math.max(30,Math.min(65,cur+(e.key==='ArrowLeft'?2:-2)))+'%');}};
 const notebook=setupNotebook({notes,entries,renderMath,getRegion:id=>workspace.get('regions',id),onRestoreArtifact:restoreArtifact,memoryEnabled:()=>rememberConversations,onMemoryChange:enabled=>{rememberConversations=enabled;saveLocal('folio-remember-conversations',enabled);updateMemoryUI();},onChanged:()=>{saveLocal('jianwei-notes',notes);renderNotes();},onOpenSource:guard(async note=>{await openSource(note.source);if(note.source.annotationId&&current.revision===note.source.revision)await annotations.revealId(note.source.annotationId);})});
 const artifacts=createArtifactWorkspace({store:workspace,host:$('visualStage'),onSave:record=>{const v=record.versions[record.cursor];addNote(v.answer.title+'\n\n'+v.answer.paragraphs.map(p=>p.text).join('\n\n'),record.source,{kind:'folio-artifact',record});},onSource:openSource,onOpen:activateArtifact,onRequestView:kind=>{const source=artifacts.current?.source;if(source)visualizeSelection(source,true,{followup:true,question:'请保留当前对象与参数，改用 '+kind+' 形式解释当前内容。'});},render:async(host,version,source,onState)=>{
- setAICollapsed(false);setTab('visual');describePlan(version.plan);const answer=mountReadingAnswer(host,version.answer,{onSave:text=>addNote(text,source),onPage:number=>openSource({...source,page:number})});renderMath(answer);const stage=document.createElement('div');stage.className='artifact-renderer';host.append(stage);const p=version.plan,options={saved:version.interaction,onState,renderMath};
+ setAICollapsed(false);setTab('visual');describePlan(version.plan);const answer=mountReadingAnswer(host,version.answer,{onPage:number=>openSource({...source,page:number})});renderMath(answer);const stage=document.createElement('div');stage.className='artifact-renderer';host.append(stage);const p=version.plan,options={saved:version.interaction,onState,renderMath};
  if(p.kind==='permutation')return mountPermutation(stage,p,(text,snapshot)=>{onState(snapshot);addNote(text,source,{kind:'folio-artifact',record:artifacts.current});},version.interaction?.kind==='permutation-state'?version.interaction:undefined,onState);
  if(p.kind==='derived')return mountDerived(stage,p,options);
  if(p.kind==='geometry')return mountGeometry(stage,p,options);
@@ -227,7 +218,7 @@ $('memoryShortcut').onclick=()=>{$('globalNotesButton').click();};
 window.addEventListener('hashchange',()=>{if(location.hash.startsWith('#/notes'))routeNotes();else if(libraryFilter==='notes'){libraryFilter='all';showLibrary();}});
 window.addEventListener('pagehide',()=>conversations.archive());
 updateMemoryUI();
-async function init(){enhanceSelects();hydrateIcons();if(!window.folioDesktop){try{serverKey=(await (await fetch('/api/status')).json()).configured===true;if(serverKey){$('apiKey').placeholder='本机服务已托管密钥，无需填写';$('keyPrivacy').textContent='密钥由本机服务在内存中托管，不返回页面、不写入浏览器存储，仅用于 DeepSeek 官方地址。原始密钥文件仍保留在你的设备上。';}}catch{}}updateModel();renderNotes();try{await refreshCache();folder=await dbOp('meta','get','folder');if(folder&&await folder.queryPermission({mode:'readwrite'})==='granted')await scanFolder();updateFolderUI();}catch{toast('本地库暂时不可用，请检查浏览器存储权限。');}renderLibrary();}
+async function init(){enhanceSelects();hydrateIcons();if(!window.folioDesktop){try{serverKey=(await (await fetch('/api/status')).json()).configured===true;modelSettings.setServerKey(serverKey);}catch{}}updateModel();renderNotes();try{await refreshCache();folder=await dbOp('meta','get','folder');if(folder&&await folder.queryPermission({mode:'readwrite'})==='granted')await scanFolder();updateFolderUI();}catch{toast('本地库暂时不可用，请检查浏览器存储权限。');}renderLibrary();}
 init().then(()=>{resetVisual();setTab('visual');routeNotes();});
 
 const manager=setupWorkspaceManager({store:workspace,dbOp,entries,refresh:refreshCache,notes,saveNotes:()=>{saveLocal('jianwei-notes',notes);renderNotes();},openDocument});
@@ -264,6 +255,7 @@ function renderPlan(plan,source){
  else if(['clarify','unsupported'].includes(plan.kind)){$('visualStage').innerHTML='<div class="visual-error"><h2>'+esc(plan.kind==='clarify'?'需要补充一点信息':'这个实验还未支持')+'</h2><p>'+esc(plan.reason)+'</p><p>可以在下方补充说明，原文引用仍然保留。</p></div>';}
 }
 async function visualizeSelection(source,forceQuestion=false,{followup=false,question=source.text}={}){
+ await keyReady;
  if(!followup||!conversations.current||conversations.current.source.id!==source.id){endConversation();conversations.begin(source,question);}
  const baseArtifact=followup?artifacts.current:null;artifacts.suspend();
  const sessionToken=conversations.current.id;$('conversationContext').hidden=false;$('conversationTopic').textContent='当前问题：'+conversations.current.question;$('conversationTopic').title=conversations.current.question;
@@ -330,16 +322,6 @@ if(window.folioDesktop){
   window.dispatchEvent(new CustomEvent('folio-command',{detail:command}));
  });
 }
-
-if(window.folioDesktop){
- $('desktopKeyOptions').hidden=false;
- $('apiKey').placeholder='输入新密钥；留空保留已配置密钥';
- $('keyPrivacy').textContent='密钥交给桌面主进程使用，保存后立即清空输入框。默认只在本次运行有效；勾选本机保存后使用 Windows 加密。只向 DeepSeek 官方地址发送。提问时发送选段；启用“自动参考原文”时发送当前文献的相关段落。自动整理的笔记只保存在本机。';
- window.folioDesktop.keyStatus().then(status=>{desktopKey=status;$('rememberKey').checked=status.persisted;updateModel();});
- $('importKey').onclick=async()=>{try{desktopKey=await window.folioDesktop.importKey($('rememberKey').checked);$('apiKey').value='';updateModel();$('connectionResult').textContent=desktopKey.configured?'密钥已导入，可点击测试连接。':'未导入密钥。';}catch(e){$('connectionResult').textContent=e.message;}};
- $('forgetKey').onclick=async()=>{desktopKey=await window.folioDesktop.forgetKey();$('apiKey').value='';$('rememberKey').checked=false;updateModel();$('connectionResult').textContent='已清除密钥。';};
-}
-$('settingsDialog').addEventListener('close',()=>{$('apiKey').value='';});
 
 let pdfResizeTimer,lastReaderWidth=0;
 new ResizeObserver(entries=>{const width=Math.round(entries[0].contentRect.width);if(width===lastReaderWidth)return;lastReaderWidth=width;clearTimeout(pdfResizeTimer);if(pdf&&!$('readingWorkspace').hidden)pdfResizeTimer=setTimeout(()=>{if(pdf&&!$('readingWorkspace').hidden)guard(renderPage)();},180);}).observe($('readerViewport'));

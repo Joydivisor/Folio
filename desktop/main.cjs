@@ -101,21 +101,29 @@ async function start() {
     if(process.platform==='win32')mainWindow.setTitleBarOverlay({color:theme==='light'?'#f1f2f5':'#1d1e21',symbolColor:theme==='light'?'#5b6471':'#b0b3b9',height:31});
     mainWindow.setBackgroundColor(theme==='light'?'#f8f9fb':'#202124');
   });
-  handle('folio:key-status', () => vault.status());
-  handle('folio:key-save', data => vault.save(data.key, data.remember === true));
+  handle('folio:key-status', data => vault.load(data?.baseUrl));
+  handle('folio:key-save', async data => {await vault.load(data.baseUrl);return vault.save(data.key, data.remember === true,data.baseUrl);});
   handle('folio:key-import', async data => {
-    const result=await dialog.showOpenDialog(mainWindow,{title:'导入 DeepSeek 密钥文件',properties:['openFile'],filters:[{name:'文本文件',extensions:['txt']}]});
-    if(result.canceled)return vault.status();
+    await vault.load(data.baseUrl);
+    const result=await dialog.showOpenDialog(mainWindow,{title:'导入模型服务密钥',properties:['openFile'],filters:[{name:'文本文件',extensions:['txt']}]});
+    if(result.canceled)return vault.status(data.baseUrl);
     const file=result.filePaths[0];
     if((await fs.promises.stat(file)).size>16384)throw new Error('请选择只包含密钥的小型文本文件。');
-    const value=(await fs.promises.readFile(file,'utf8')).match(/sk-[A-Za-z0-9_-]+/)?.[0];
-    if(!value)throw new Error('文件中没有可识别的 DeepSeek 密钥。');
-    return vault.save(value,data.remember===true);
+    const {extractCredential}=await import('../public/credential-input.js');
+    const value=extractCredential(await fs.promises.readFile(file,'utf8'));
+    if(!value)throw new Error('文件中没有可识别的密钥。');
+    return vault.save(value,data.remember===true,data.baseUrl);
   });
-  handle('folio:key-forget', () => vault.forget());
+  handle('folio:key-forget', data => vault.forget(data?.baseUrl));
+  handle('folio:models', async data => {
+    await vault.load(data.baseUrl);const config=vault.config(data);
+    const response=await fetch(ORIGIN+'/api/models',{method:'POST',headers:{'Content-Type':'application/json',Origin:ORIGIN},body:JSON.stringify(config),signal:AbortSignal.timeout(25000)});
+    const result=await response.json();if(!response.ok)throw Error(result.error||'无法获取模型列表。');return result;
+  });
   handle('folio:ai-cancel', id => { pending.get(id)?.abort(); });
   handle('folio:ai-request', async data => {
     if (typeof data.id !== 'string' || pending.has(data.id) || pending.size >= 2) throw new Error('请等待当前请求完成。');
+    await vault.load(data.config.baseUrl);
     const config = vault.config(data.config);
     if (!config.apiKey) throw new Error('请先在设置中填写密钥。');
     const controller = new AbortController(); pending.set(data.id, controller);
