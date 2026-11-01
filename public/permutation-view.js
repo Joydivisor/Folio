@@ -2,7 +2,7 @@ import {identity,compose,cycles} from './groups.js';
 import {compositionTrace,permutationFacts,mappingInput} from './experiment-math.js';
 import {permutationPower,validatePermutationSnapshot} from './permutation-state.js';
 const colors=['#648bcc','#c58a57','#4c9b89','#a07aba','#bc6d88','#6c9c55','#ad984d','#749baa'];
-export function mountPermutation(host, original, onSave, saved){
+export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
  let plan={...original},state=identity(plan.n),steps=0,trace=null,stage=0,productName='',edited=false;
  if(saved){const valid=validatePermutationSnapshot(saved);plan=valid.plan;state=valid.state;steps=valid.steps;}
  let timer=null,power=0;
@@ -34,6 +34,7 @@ export function mountPermutation(host, original, onSave, saved){
  }
  function showStep(){state=[trace.initial,trace.intermediate,trace.result][stage];steps=stage;render();}
  function render(){
+  onState({kind:'permutation-state',version:1,plan:structuredClone(plan),state:[...state],steps});
   const period=permutationFacts(plan.sigma).order;
   const candidates=[...(steps<=period?[steps]:[]),...Array.from({length:period+1},(_,i)=>i)];
   const exponent=candidates.find(k=>permutationPower(plan.sigma,k).every((v,i)=>v===state[i]));

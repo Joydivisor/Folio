@@ -4,7 +4,7 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
   const colors={yellow:'#e7c763',green:'#7cbe9a',blue:'#80a9df',pink:'#d493b2',purple:'#ad99cf'};
   let color='yellow',selection=null,root=null,observer=null,frame=0,activeId=null,deleted=null;
   const persist=()=>save('folio-annotations',store);
-  const current=()=>store.filter(a=>a.documentId===getDocument().id).sort((a,b)=>a.page-b.page||a.created-b.created);
+  const current=()=>store.filter(a=>a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision)).sort((a,b)=>a.page-b.page||a.created-b.created);
   function textRoot(){return $('documentContent').querySelector('.textLayer,.paper');}
   function capture(){
     const s=getSelection(),target=textRoot();
@@ -12,7 +12,7 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
     const range=s.getRangeAt(0),prefix=range.cloneRange();prefix.selectNodeContents(target);prefix.setEnd(range.startContainer,range.startOffset);
     const text=target.textContent,start=prefix.toString().length,exact=range.toString();
     if(!exact.trim()||exact.length>16000)return;
-    selection={documentId:getDocument().id,page:getPage(),displayText:s.toString(),anchor:{start,end:start+exact.length,exact,prefix:text.slice(Math.max(0,start-32),start),suffix:text.slice(start+exact.length,start+exact.length+32)}};
+    selection={documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,page:getPage(),displayText:s.toString(),anchor:{start,end:start+exact.length,exact,prefix:text.slice(Math.max(0,start-32),start),suffix:text.slice(start+exact.length,start+exact.length+32)}};
   }
   document.addEventListener('selectionchange',capture);
   function makeRange(anchor){
@@ -62,7 +62,7 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
       const quote=document.createElement('button');quote.className='annotation-excerpt';quote.textContent=a.text||'此页便笺';quote.onclick=()=>reveal(a);
       const comment=document.createElement('textarea');comment.rows=3;comment.value=a.comment;comment.placeholder='添加评论…';comment.setAttribute('aria-label','第 '+a.page+' 页批注评论');comment.oninput=()=>{a.comment=comment.value;persist();};
       const actions=document.createElement('div');actions.className='annotation-actions';
-      for(const [label,fn]of [['存为笔记',()=>addNote(noteText(a),{id:a.documentId,name:a.documentName,page:a.page,annotationId:a.id})],['询问 AI',()=>visualize({text:a.text+(a.comment?'\n问题：'+a.comment:''),id:a.documentId,name:a.documentName,page:a.page})],['删除',()=>{deleted=a;store.splice(store.indexOf(a),1);persist();$('undoAnnotation').hidden=false;renderList();paint();}]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;actions.append(b);}
+      for(const [label,fn]of [['存为笔记',()=>addNote(noteText(a),{id:a.documentId,documentId:a.canonicalId,revision:a.revision,name:a.documentName,page:a.page,annotationId:a.id})],['询问 AI',()=>visualize({text:a.text+(a.comment?'\n问题：'+a.comment:''),id:a.documentId,documentId:a.canonicalId,revision:a.revision,name:a.documentName,page:a.page})],['删除',()=>{deleted=a;store.splice(store.indexOf(a),1);persist();$('undoAnnotation').hidden=false;renderList();paint();}]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;actions.append(b);}
       card.append(head,palette,quote,comment,actions);list.append(card);
     }
     if(!list.children.length){const empty=document.createElement('p');empty.className='annotation-empty';empty.textContent=all.length?'没有匹配的批注。':'选中文字后点击「高亮」或「下划线」，也可以为当前页添加便笺。';list.append(empty);}
@@ -72,9 +72,9 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
     capture();const valid=selection?.documentId===getDocument().id&&selection.page===getPage();
     if(!valid&&type!=='note'){toast('先选中需要标记的原文。');return;}
     const anchor=valid?selection.anchor:null;
-    const existing=store.find(a=>a.documentId===getDocument().id&&a.page===getPage()&&a.type===type&&a.anchor&&a.anchor.start===anchor?.start&&a.anchor.end===anchor?.end);
+    const existing=store.find(a=>a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision)&&a.page===getPage()&&a.type===type&&a.anchor&&a.anchor.start===anchor?.start&&a.anchor.end===anchor?.end);
     if(existing){activeId=existing.id;showPanel();paint();return;}
-    const a={id:crypto.randomUUID(),documentId:getDocument().id,documentName:getDocument().name,page:getPage(),type,color,anchor,text:valid?(selection.displayText||anchor.exact):'',comment:'',created:Date.now()};
+    const a={id:crypto.randomUUID(),documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,documentName:getDocument().name,page:getPage(),type,color,anchor,text:valid?(selection.displayText||anchor.exact):'',comment:'',created:Date.now()};
     store.push(a);activeId=a.id;persist();selection=null;getSelection()?.removeAllRanges();showPanel();paint();
     [...$('annotationList').querySelectorAll('.annotation-card')].find(el=>el.classList.contains('active'))?.querySelector('textarea')?.focus();
   }
@@ -91,6 +91,6 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
   });
   return {
     mount(){selection=null;observer?.disconnect();root=$('documentContent').querySelector('.pdf-page,.paper');if(root){observer=new ResizeObserver(paint);observer.observe(root);paint();}renderList();},
-    async revealId(id){const a=store.find(a=>a.id===id&&a.documentId===getDocument().id);if(a){showPanel();await reveal(a);}},
+    async revealId(id){const a=store.find(a=>a.id===id&&a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision));if(a){showPanel();await reveal(a);}},
   };
 }

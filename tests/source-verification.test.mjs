@@ -21,7 +21,7 @@ test('plain prose and unsupported powers are not labeled as independently checke
 });
 
 test('a cube can never select the tetrahedral renderer',()=>{
- assert.equal(verifyPlanAgainstSource({kind:'tetrahedron',object:'正方体绕体对角线旋转',operation:'vertex'},'正方体绕对角线旋转120°').kind,'concept');
- assert.equal(verifyPlanAgainstSource({kind:'tetrahedron',object:'旋转',operation:'vertex'},'把它旋转').kind,'concept');
+ assert.equal(verifyPlanAgainstSource({kind:'tetrahedron',object:'正方体绕体对角线旋转',operation:'vertex'},'正方体绕对角线旋转120°').kind,'explain');
+ assert.equal(verifyPlanAgainstSource({kind:'tetrahedron',object:'旋转',operation:'vertex'},'把它旋转').kind,'explain');
  assert.equal(verifyPlanAgainstSource({kind:'tetrahedron',object:'正四面体旋转',operation:'vertex'},'正四面体绕顶点轴转120°').kind,'tetrahedron');
 });

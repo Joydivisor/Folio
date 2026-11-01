@@ -17,7 +17,7 @@ try{
   if(Date.now()>deadline)throw Error('Window load timed out');
   await new Promise(r=>setTimeout(r,250));
  }
- for(const p of ['/','/app.js','/icons.js','/vendor/build/pdf.mjs','/katex/katex.min.js']){
+ for(const p of ['/','/app.js','/icons.js','/vendor/build/pdf.mjs','/katex/katex.min.js','/workspace-store.js','/artifact-workspace.js','/reader-navigation.js','/ocr/tesseract.min.js','/ocr/worker.min.js','/ocr-core/tesseract-core.wasm.js','/ocr-data/eng.traineddata.gz','/ocr-data/chi_sim.traineddata.gz']){
   const r=await fetch('http://127.0.0.1:4174'+p),bytes=(await r.arrayBuffer()).byteLength;
   if(r.status!==200||!bytes)throw Error('Runtime asset failed: '+p);checks.push({path:p,status:r.status,bytes});
  }

@@ -1,6 +1,6 @@
 import {language,t} from './i18n.js';
 import {noteRoute,noteTrail} from './conversations.js';
-export function setupNotebook({notes,entries,onOpenSource,onRestoreArtifact,onChanged,renderMath,onMemoryChange,memoryEnabled}){
+export function setupNotebook({notes,entries,onOpenSource,onRestoreArtifact,onChanged,renderMath,onMemoryChange,memoryEnabled,getRegion}){
  const displayTrail=note=>noteTrail(note).map((part,index)=>language()==='en'?(index===0?'Notes':index===2?part.replace(/^第 (\d+) 页$/,'Page $1'):part):part);
  const $=id=>document.getElementById(id);let selected=null;
  const button=(label,fn)=>{const b=document.createElement('button');b.textContent=label;b.onclick=fn;return b;};
@@ -16,11 +16,11 @@ export function setupNotebook({notes,entries,onOpenSource,onRestoreArtifact,onCh
   const title=document.createElement('h2');title.textContent=note.title||'阅读笔记';
   const meta=document.createElement('p');meta.className='muted';meta.textContent=note.date+(note.kind==='conversation'?(language()==='en'?' · Local note · '+note.turns.length+' turns':' · 本机整理 · '+note.turns.length+' 轮对话'):'');
   const actions=document.createElement('div');actions.className='notebook-actions';
-  if(note.artifact?.kind==='permutation-state'&&onRestoreArtifact)actions.append(button('恢复交互实验',()=>onRestoreArtifact(note)));
+  if(['permutation-state','folio-artifact'].includes(note.artifact?.kind)&&onRestoreArtifact)actions.append(button('恢复交互实验',()=>onRestoreArtifact(note)));
   if(note.source?.id){const exists=entries().some(e=>e.id===note.source.id);actions.append(button(exists?'打开原文':'重新连接原文',()=>onOpenSource(note)));}
   actions.append(button('导出这条笔记',()=>download(note)),button('编辑笔记',()=>{content.hidden=true;const input=document.createElement('textarea');input.className='note-editor';input.value=note.text;const save=button('保存修改',()=>{note.text=input.value;onChanged();render();});detail.append(input,save);input.focus();}),button('删除笔记',()=>{const index=notes.findIndex(n=>n.id===note.id);if(index<0)return;notes.splice(index,1);onChanged();render();}));
   const content=document.createElement('div');content.className='notebook-prose';content.textContent=note.text;
-  detail.append(breadcrumb,title,meta,actions,content);renderMath(content);
+  detail.append(breadcrumb,title,meta,actions,content);renderMath(content);if(note.source?.regionId&&getRegion)getRegion(note.source.regionId).then(region=>{if(region&&selected===note.id){const image=document.createElement('img');image.src=region.image;image.alt='原文引用区域';image.style.maxWidth='100%';content.after(image);}});
   if(note.source?.text){const quote=document.createElement('details');const summary=document.createElement('summary');summary.textContent='引用原文';const p=document.createElement('p');p.textContent=note.source.text;quote.append(summary,p);detail.append(quote);}
   if(note.artifact){const artifact=document.createElement('details');const summary=document.createElement('summary');summary.textContent='可视化记录';const pre=document.createElement('pre');const a=note.artifact;pre.textContent=a.nodes?a.nodes.map(n=>n.label+'：'+n.detail).join('\n\n')+'\n\n'+a.edges.map(e=>a.nodes.find(n=>n.id===e.from)?.label+' → '+a.nodes.find(n=>n.id===e.to)?.label+'：'+e.label).join('\n'):JSON.stringify(a,null,2);artifact.append(summary,pre);detail.append(artifact);}
   if(note.turns?.length){const turns=document.createElement('details');const summary=document.createElement('summary');summary.textContent=(language()==='en'?'Full conversation · '+note.turns.length+' turns':'完整对话 · '+note.turns.length+' 轮');turns.append(summary);for(const [i,t]of note.turns.entries()){const section=document.createElement('section'),h=document.createElement('h3');h.textContent=(i+1)+'. '+t.question;section.append(h);for(const p of t.answer.paragraphs){const el=document.createElement('p');el.textContent=p.text;section.append(el);if(p.sources?.length){const cite=document.createElement('small');cite.textContent=p.sources.map(s=>'第 '+s.page+' 页：'+s.quote).join('\n');section.append(cite);}}turns.append(section);renderMath(section);}detail.append(turns);}

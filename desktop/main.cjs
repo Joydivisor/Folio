@@ -83,6 +83,7 @@ async function start() {
     if (!authorized(event)) throw new Error('请求来源无效。');
     return fn(data);
   });
+  handle('folio:open-download', async value=>{const {validateRelease}=await import('../public/release-info.js');const response=await fetch('https://getfolio.pages.dev/release.json',{signal:AbortSignal.timeout(15000),redirect:'error'});if(!response.ok)throw Error('Release server unavailable');const release=validateRelease(await response.json());if(!release.downloads.some(d=>d.url===value))throw Error('Unrecognized download');await shell.openExternal(value);});
   handle('folio:language', value => {
     if(!['zh-CN','en'].includes(value))throw new Error('Invalid language');
     refreshMenu(value);

@@ -6,19 +6,20 @@
 
 - 下载页：https://getfolio.pages.dev/
 - Windows 发布：https://github.com/Joydivisor/Folio-downloads/releases
-- 当前版本：**1.0.0-beta.4**。
+- 当前版本：**1.0.0-beta.5**。
 
-下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.4-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
+下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.5-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
 
 安装后可从开始菜单启动。更新时先关闭 Folio，再将新版安装到原位置。可从 Windows「已安装的应用」或开始菜单卸载；卸载保留个人文献、批注、笔记和设置。安装程序仅移除清单中的程序文件，不递归删除整个安装文件夹。旧 ZIP 版用户可直接安装新版，应用数据仍使用原来的独立目录。
 
-这是尚未签名的测试版，没有自动更新。提供 Windows x64、macOS Apple Silicon / Intel，以及 Ubuntu/Debian x64 测试包。macOS 测试版未经过 Developer ID 签名和 Apple 公证。
+这是尚未签名的测试版，可检查更新并明确下载，暂不自动安装更新。提供 Windows x64、macOS Apple Silicon / Intel，以及 Ubuntu/Debian x64 测试包。macOS 测试版未经过 Developer ID 签名和 Apple 公证。
 
 ## 主要功能
 
 - 本地 PDF、TXT、Markdown 文献库：连接文件夹、导入、搜索、收藏、最近阅读和网格/列表视图。
-- 文献阅读：页码、缩放、阅读位置；五色高亮、下划线、便笺和来源定位。
-- AI 画布：拖入选文，结合书中上下文解释；概念关系图及可交互的置换、导出列、正四面体 3D 实验。
+- 文献阅读：页码、缩放、阅读位置；五色高亮、下划线、便笺和来源定位；持久全文索引、PDF 目录、搜索与公式/图表区域引用。
+- AI 画布：拖入选文，结合书中上下文解释；解释、对比表、分步推导、过程、概念图，以及可交互的置换、导出列、立方体/正四面体/正八面体 3D 旋转。
+- 交互作品：版本历史、手动编辑、追问修改、撤销/重做和命名快照；保存后可恢复实验进度与视角。
 - 笔记：保存解释与实验，按文献和问题回看，导出 Markdown。对话相互隔离，自动整理对话为笔记默认关闭。
 - 中文/英文、日间/夜间外观、统一设置和顶部菜单。阅读标签支持 ×、右键关闭。
 
@@ -32,7 +33,7 @@ AI 需要用户自行配置模型服务和密钥；模型费用由服务商收�
 
 启用 AI 后，提问、对话上下文和用于解释的原文片段会发送给所选模型服务；本地保存不意味着 AI 请求离线。应用不自动上传整个文献库。自动整理笔记为本地可选功能。
 
-目前不支持 OCR、EPUB、Zotero 同步、PDF 批注写回或任意 3D 场景生成。批注保存在应用数据中，可导出 Markdown。请定期导出重要笔记。
+支持本地中英文印刷体 OCR（需人工校正公式）、Zotero RDF 单向导入及缺失附件定位；不支持 EPUB、Zotero 双向同步、PDF 批注写回或任意 3D 场景生成。批注保存在应用数据中，可导出 Markdown。可从文件菜单备份工作区，默认不包含原始文献；勾选后可包含最多 250 MB 的文献副本。密钥不进入备份。
 
 ## 本地开发
 
@@ -54,7 +55,7 @@ npm run package:win
 npm run installer:win
 ```
 
-程序产物位于 `dist/v1.0.0-beta.4/Folio-win32-x64/`；安装程序位于 `releases/Folio-Setup-1.0.0-beta.4-win-x64.exe`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
+程序产物位于 `dist/v1.0.0-beta.5/Folio-win32-x64/`；安装程序位于 `releases/Folio-Setup-1.0.0-beta.5-win-x64.exe`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
 
 安装器使用 [NSIS 3.13](https://nsis.sourceforge.io/Download) 的 Modern UI 2。将官方便携编译器解压到 `.installer-cache/nsis-3.13/`，或用环境变量 `NSIS_EXE` 指向 `makensis.exe`，再执行上面的构建命令。版本信息与精确卸载清单由构建脚本生成。手动集成测试：`powershell -ExecutionPolicy Bypass -File scripts/test-installer.ps1`，会在临时测试目录执行安装、更新和卸载；检测到现有安装或同名快捷方式时会停止。
 

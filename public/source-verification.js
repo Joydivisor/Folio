@@ -14,7 +14,7 @@ export function verifyPlanAgainstSource(plan,source) {
   if(plan.kind==='tetrahedron'){
     const object=String(plan.object||'');
     const wrongShape=/正方体|立方体|球体|圆柱|正八面体|正十二面体|正二十面体|cube|octahedron|dodecahedron|icosahedron/i;
-    if(wrongShape.test(object)||(!/四面体|tetrahedron/i.test(object)&&wrongShape.test(source))||!/四面体|tetrahedron/i.test(source))return {kind:'concept',object:plan.object,reason:'用关系图解释原文对象及其变换。'};
+    if(wrongShape.test(object)||(!/四面体|tetrahedron/i.test(object)&&wrongShape.test(source))||!/四面体|tetrahedron/i.test(source))return {kind:'explain',object:plan.object,reason:'保留原文对象的讲解，不替换为其它几何体。'};
   }
   if(plan.kind!=='permutation')return plan;
   const next={...plan},checked=[],corrected=[];
