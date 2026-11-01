@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.0-beta.8",
+  "version": "1.0.0-beta.9",
   "description": "Local-first interactive reading desk with DeepSeek and group theory experiments",
   "main": "desktop/main.cjs",
   "scripts": {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0-beta.9 · 2026-11-01
+
+- PDF appearance is unchanged. Reading order is organized inside its transparent text layer automatically; no Reading mode toggle.
+- Native selection plus triple-click / hover paragraph selection and Shift extension; source context follows the selection.
+- Direct drag-to-AI without an intervening modal. Visible 1.6-second double ripple and receipt, with reduced-motion support.
+- Existing notes and annotations are preserved, including references from the earlier beta.9 reading view.
+- Materialized file copies and first-import read recovery retained.
+- Dismiss the selection toolbar after deselection, a blank-page click or Escape, while preserving source text for toolbar actions.
+
+Complex/rotated/scanned layouts may still need OCR or manual verification. Text-only models do not analyze image pixels.
+
 ## 1.0.0-beta.8 · 2026-11-01
 
 - Open supported interactive results directly, with an Explanation / Presentation switch that does not request another model answer.

@@ -5,7 +5,7 @@ import {spawnSync} from 'node:child_process';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const {version}=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-const payload=path.join(root,'dist',`v${version}`,'Folio-win32-x64');
+const payload=process.env.FOLIO_INSTALLER_PAYLOAD||path.join(root,'dist',`v${version}`,'Folio-win32-x64');
 const output=path.join(root,'releases',`Folio-Setup-${version}-win-x64.exe`);
 const generated=path.join(root,'dist',`v${version}`,'installer');
 const compiler=process.env.NSIS_EXE||path.join(root,'.installer-cache','nsis-3.13','makensis.exe');

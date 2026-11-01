@@ -9,7 +9,7 @@ const appVersion = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), '
 const cachedFolder = fs.existsSync(cache) ? fs.readdirSync(cache).find(name => fs.existsSync(path.join(cache, name, `electron-v${version}-win32-x64.zip`))) : undefined;
 const paths = await packager({
   ...(cachedFolder ? {electronZipDir:path.join(cache,cachedFolder)} : {}),
-  dir: root, out: path.join(root, 'dist', `v${appVersion}`), name: 'Folio',
+  dir: root, out: process.env.FOLIO_PACKAGE_OUT || path.join(root, 'dist', `v${appVersion}`), name: 'Folio',
   executableName: 'Folio', platform: 'win32', arch: 'x64',
   icon: path.join(root, 'build', 'folio.ico'),
   overwrite: true, prune: true, asar: true,

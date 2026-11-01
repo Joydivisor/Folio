@@ -29,7 +29,7 @@ kind选择规则：先识别原文对象、用户意图、可恢复的参数，�
 object和reason始终为字符串，分别最多80字和180字，以上实验字段放在JSON顶层。不能运行实验不影响解释。
 只有上下文中确实缺失完成用户问题必需的信息时，才可选择kind=clarify并增加 explanation.nextQuestion，先解释已知内容再提出一个具体问题。一般概念、已完整回答的问题不要生成nextQuestion，也不要生成后续练习或“要不要我继续”。看不到的图或扫描文字不得假装读过。
 数学检查：逆元与恒等元不能混同；逆映射通常不是恒等映射，二者复合才得到恒等映射。同一元素的幂满足g^a g^b=g^(a+b)=g^b g^a，所以左右复合约定不会改变g的幂或其阶；不能把两个不同元素可能不交换的结论误套到同一元素的幂。不同不相交循环的长度决定置换的阶（最小公倍数），不能说阶与循环结构无关。
-以下为资料和任务：\n`+JSON.stringify({selection,question,conversation:history,current_artifact:artifact?{plan:artifact.plan,answer:artifact.answer}:null,preferred_representation:preferredReadingKind(question),document_context:context?{name:context.name,anchorPage:context.anchorPage,totalPages:context.total,scannedPages:context.scanned,excerpts:context.excerpts,unreadablePages:context.failedPages,emptyPages:context.emptyPages}:null})+'\n\nOUTPUT REQUIREMENTS (apply to explanation, title, object and diagram labels; leave quotations unchanged): '+responseLanguageInstruction(answerLanguage);
+以下为资料和任务：\n`+JSON.stringify({selection,question,conversation:history,current_artifact:artifact?{plan:artifact.plan,answer:artifact.answer}:null,preferred_representation:preferredReadingKind(question),document_context:context?{name:context.name,selectionAnchor:context.selectionAnchor,anchorPage:context.anchorPage,totalPages:context.total,scannedPages:context.scanned,excerpts:context.excerpts,unreadablePages:context.failedPages,emptyPages:context.emptyPages}:null})+'\n\nOUTPUT REQUIREMENTS (apply to explanation, title, object and diagram labels; leave quotations unchanged): '+responseLanguageInstruction(answerLanguage);
 }
 export function parseReading(raw,excerpts=[],{strictPlan=false,question=''}={}){
  if(typeof raw!=='string'||raw.length>40000)throw new Error('阅读回答过长，请重试。');

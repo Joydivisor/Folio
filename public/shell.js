@@ -75,7 +75,7 @@ export function setupShell({selection,fit,closeDocument,hasDocument}){
  function notice(message){const d=document.createElement('dialog');d.className='info-dialog';const p=document.createElement('p');p.textContent=message;const b=document.createElement('button');b.textContent=t('关闭');b.onclick=()=>d.close();d.append(p,b);d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal();}
  async function execute(id){
   const item=menus.flatMap(m=>m.items).find(i=>i?.[0]===id);if(!item||!commandEnabled(item,context()))return;
-  if(['navigation','ocr','region','backup','restore','zotero','updates','artifacts','rollback'].includes(id)){window.dispatchEvent(new CustomEvent('folio-feature',{detail:id}));return;}
+  if(['navigation','ocr','backup','restore','zotero','updates','artifacts','rollback'].includes(id)){window.dispatchEvent(new CustomEvent('folio-feature',{detail:id}));return;}
   const targets={import:'importFiles',folder:'chooseFolder',library:'libraryButton',notes:'globalNotesButton',export:'exportNotes','ai-panel':'toggleAI',annotations:'toggleAnnotations',focus:'focusCanvas','zoom-in':'zoomIn','zoom-out':'zoomOut',explore:'citeSelection',compile:'compileAnnotations'};
   if(targets[id]){$(targets[id]).click();return;}
   if(['settings','appearance','ai-settings'].includes(id)){settings(id==='settings'?'general':id==='appearance'?'appearance':'ai');return;}

@@ -1,5 +1,5 @@
 import {resolveAnchor} from './annotation-anchor.js';
-export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,visualize,toast}){
+export function setupAnnotations({getDocument,getPage,getMode=()=>'original',goPage,read,save,addNote,visualize,toast}){
   const $=id=>document.getElementById(id),store=read('folio-annotations',[]);
   const colors={yellow:'#e7c763',green:'#7cbe9a',blue:'#80a9df',pink:'#d493b2',purple:'#ad99cf'};
   let color='yellow',selection=null,root=null,observer=null,frame=0,activeId=null,deleted=null;
@@ -42,7 +42,7 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
   function showPanel(open=true){$('annotationPanel').hidden=!open;$('toggleAnnotations').setAttribute('aria-expanded',String(open));if(open)renderList();}
   async function reveal(a){
     activeId=a.id;
-    if(a.page!==getPage())await goPage(a.page);
+    if(a.page!==getPage())await goPage(a.page,a.view||'original');
     paint();const range=a.anchor&&makeRange(a.anchor);
     if(a.anchor&&!range)toast('原文位置已变化，暂时无法精确定位；已打开对应页。');
     if(range){const rect=range.getBoundingClientRect(),vp=$('readerViewport');vp.scrollTop+=rect.top-vp.getBoundingClientRect().top-80;}
@@ -74,7 +74,7 @@ export function setupAnnotations({getDocument,getPage,goPage,read,save,addNote,v
     const anchor=valid?selection.anchor:null;
     const existing=store.find(a=>a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision)&&a.page===getPage()&&a.type===type&&a.anchor&&a.anchor.start===anchor?.start&&a.anchor.end===anchor?.end);
     if(existing){activeId=existing.id;showPanel();paint();return;}
-    const a={id:crypto.randomUUID(),documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,documentName:getDocument().name,page:getPage(),type,color,anchor,text:valid?(selection.displayText||anchor.exact):'',comment:'',created:Date.now()};
+    const a={id:crypto.randomUUID(),documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,documentName:getDocument().name,page:getPage(),view:getMode(),type,color,anchor,text:valid?(selection.displayText||anchor.exact):'',comment:'',created:Date.now()};
     store.push(a);activeId=a.id;persist();selection=null;getSelection()?.removeAllRanges();showPanel();paint();
     [...$('annotationList').querySelectorAll('.annotation-card')].find(el=>el.classList.contains('active'))?.querySelector('textarea')?.focus();
   }
