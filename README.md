@@ -6,9 +6,9 @@
 
 - 下载页：https://getfolio.pages.dev/
 - Windows 发布：https://github.com/Joydivisor/Folio-downloads/releases
-- 当前版本：**1.0.0-beta.5**。
+- 当前版本：**1.0.0-beta.9**。
 
-下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.5-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
+下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.9-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
 
 安装后可从开始菜单启动。更新时先关闭 Folio，再将新版安装到原位置。可从 Windows「已安装的应用」或开始菜单卸载；卸载保留个人文献、批注、笔记和设置。安装程序仅移除清单中的程序文件，不递归删除整个安装文件夹。旧 ZIP 版用户可直接安装新版，应用数据仍使用原来的独立目录。
 
@@ -55,7 +55,9 @@ npm run package:win
 npm run installer:win
 ```
 
-程序产物位于 `dist/v1.0.0-beta.5/Folio-win32-x64/`；安装程序位于 `releases/Folio-Setup-1.0.0-beta.5-win-x64.exe`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
+程序产物位于 `dist/v1.0.0-beta.9/Folio-win32-x64/`；安装程序位于 `releases/Folio-Setup-1.0.0-beta.9-win-x64.exe`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
+
+`releases/` 只保留当前版本各平台安装包、内测 ZIP、发布说明和校验清单；验证报告位于 `releases/verification/`。内测 ZIP 可用 `python scripts/package-windows-test-zip.py` 生成：先核对清单中的 EXE 校验值，已有 ZIP 不会被覆盖。生成目录与测试报告不提交源码仓库。
 
 安装器使用 [NSIS 3.13](https://nsis.sourceforge.io/Download) 的 Modern UI 2。将官方便携编译器解压到 `.installer-cache/nsis-3.13/`，或用环境变量 `NSIS_EXE` 指向 `makensis.exe`，再执行上面的构建命令。版本信息与精确卸载清单由构建脚本生成。手动集成测试：`powershell -ExecutionPolicy Bypass -File scripts/test-installer.ps1`，会在临时测试目录执行安装、更新和卸载；检测到现有安装或同名快捷方式时会停止。
 
@@ -69,6 +71,7 @@ npm run installer:win
 - `scripts/`：桌面打包、品牌图标生成和手动评估。
 - `tests/`：数学、来源验证、模型代理与交互状态测试。
 - `build/`：应用图标。
+- `docs/`：文档索引；`docs/history/` 保存旧版验收记录与历史升级计划。
 
 应用源码仓库为私有。下载站源码另存于私有仓库 `Joydivisor/Folio.github.io`；公开安装包与校验文件放在 `Joydivisor/Folio-downloads`，访客下载无需登录。桌面程序分发其运行所需的客户端代码，私有仓库不等同于客户端代码不可提取。
 
@@ -78,4 +81,4 @@ npm run installer:win
 
 私有仓库的 `Build macOS and Linux` 工作流在对应系统上运行测试、打包和启动检查。Mac 下载 DMG 后将 Folio 拖入 Applications；Linux 使用系统软件安装器安装 `.deb`，首轮验证平台为 Ubuntu 22.04 x64。未公证 Mac 测试包可能被 Gatekeeper 拦截，当前未承诺普通用户无提示安装。Windows 继续提供安装向导。
 
-后续升级与 ChatGPT OAuth 接入条件见 [UPGRADE_PLAN.md](UPGRADE_PLAN.md)。
+历史升级计划与当时记录的 ChatGPT OAuth 接入条件见 [UPGRADE_PLAN.md](docs/history/UPGRADE_PLAN.md)。文档导航见 [docs/README.md](docs/README.md)。

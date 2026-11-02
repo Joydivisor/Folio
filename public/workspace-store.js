@@ -3,7 +3,7 @@ import {DISPLAY_KINDS,parseDisplayPlan} from './display-plan.js';
 import {parseUnderstanding} from './understanding.js';
 import {validatePermutationSnapshot} from './permutation-state.js';
 import {parseGraph} from './graph-schema.js';
-export const DATA_KEYS=['jianwei-notes','jianwei-positions','jianwei-favorites','jianwei-recent','folio-annotations','folio-remember-conversations','folio-display'];
+export const DATA_KEYS=['jianwei-notes','jianwei-positions','jianwei-favorites','jianwei-recent','folio-annotations','folio-remember-conversations','folio-display','folio-hidden-documents'];
 export const TABLES=['state','documents','pages','artifacts','imports','regions'];
 function validateTree(value,depth=0){
  if(depth>40)throw Error('Backup nesting is too deep');

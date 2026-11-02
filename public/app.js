@@ -2,6 +2,7 @@ import {enhancePDFSelection} from './pdf-selection.js';
 import {layoutText,plainLayout,blockContext,REFLOW_VERSION} from './reflow-layout.js';
 import {selectionReview,dropFeedback,cropSource} from './reflow-view.js';
 import {snapshotFile,readDocumentFile,fileReadMessage} from './document-file.js';
+import {chooseImportDestination} from './import-permission.js';
 import {openStudyNote} from './study-note-dialog.js';
 import {learningRequest} from './learning-actions.js';
 import {renderNoteMarkdown,mountNoteEditor,exportNotesMarkdown} from './note-renderer.js';
@@ -59,11 +60,12 @@ let settings={baseUrl:'https://api.deepseek.com',model:'deepseek-flash',thinking
 let mathRenderer=null;
 import('/katex/contrib/auto-render.mjs').then(m=>{mathRenderer=m.default;document.querySelectorAll('.reading-answer,.notebook-prose,#notebookDetail details').forEach(renderMath);}).catch(()=>{});
 function renderMath(el){if(mathRenderer)mathRenderer(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false},{left:'$',right:'$',display:false}],throwOnError:false,trust:false,strict:'ignore'});}
-function entries(){return [...new Map([...folderEntries,...cachedEntries].map(entry=>[entry.id,entry])).values()];}
+function entries(){return [...new Map([...folderEntries.filter(entry=>!hiddenDocuments.has(entry.id)),...cachedEntries].map(entry=>[entry.id,entry])).values()];}
 function supports(name){return /\.(pdf|txt|md)$/i.test(name);}
 
 let libraryFilter='all',libraryDisplay=readLocal('folio-display','list'),selectedDocument=null;
 const favorites=new Set(readLocal('jianwei-favorites',[])),recent=readLocal('jianwei-recent',{});
+const hiddenDocuments=new Set(readLocal('folio-hidden-documents',[]));
 function showLibrary(){navigation.stop();endConversation();setCanvasFocus(false);document.body.dataset.view='library';$('libraryHome').hidden=false;$('readingWorkspace').hidden=true;$('viewTitle').textContent='Library';$('libraryButton').classList.add('active');$('readerTab').classList.remove('active');renderLibrary();}
 function showReader(){if(location.hash.startsWith('#/notes'))history.replaceState(null,'',location.pathname);document.body.dataset.view='reader';$('libraryHome').hidden=true;$('readingWorkspace').hidden=false;$('viewTitle').textContent='Reader';$('libraryButton').classList.remove('active');$('readerTab').classList.add('active');$('readerTabGroup').hidden=false;}
 function folderDot(path){const colors=['#e6b85c','#61c5a3','#729fe0','#ce82ab','#a88cdb'];const hash=[...path].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0);return '<i class="folder-dot" style="--dot:'+colors[hash%colors.length]+'" aria-hidden="true"></i>';}
@@ -73,6 +75,22 @@ function selectDocument(id){
  selectedDocument=id;
  document.querySelectorAll('[data-document-row]').forEach(row=>{const active=row.dataset.documentRow===id;row.classList.toggle('selected',active);row.querySelector('[data-doc]').setAttribute('aria-pressed',String(active));});
  $('openSelected').disabled=!id;
+}
+function requestRemoveDocument(entry){
+ if(!entry)return;
+ const {root,body}=modal(ui('从文献库移除','Remove from library'));root.dataset.removeDocument=entry.id;
+ body.append(node('p',entry.name),node('p',ui('移除 Folio 中的条目和导入副本。磁盘上的原文件、笔记与批注会保留。','Remove the library entry and imported copy. Original files on disk, notes and annotations are kept.')));
+ const actions=node('div',undefined,{className:'workspace-actions'});
+ const cancel=button(ui('取消','Cancel'),()=>root.close());cancel.dataset.removeCancel='';
+ const confirm=button(ui('移除','Remove'),async()=>{
+  await dbOp('files','delete',entry.id);
+  if(folderEntries.some(item=>item.id===entry.id)){hiddenDocuments.add(entry.id);saveLocal('folio-hidden-documents',[...hiddenDocuments]);}
+  cachedEntries=cachedEntries.filter(item=>item.id!==entry.id);
+  favorites.delete(entry.id);delete recent[entry.id];delete positions[entry.id];
+  saveLocal('jianwei-favorites',[...favorites]);saveLocal('jianwei-recent',recent);saveLocal('jianwei-positions',positions);
+  if(current.id===entry.id)closeDocument();
+  selectedDocument=null;renderLibrary();root.close();toast(ui('已从文献库移除','Removed from the library'));
+ });confirm.dataset.removeConfirm='';actions.append(cancel,confirm);body.append(actions);cancel.focus();
 }
 function renderLibrary(){
  const isNotes=libraryFilter==='notes';$('libraryDocuments').hidden=isNotes;$('notesHome').hidden=!isNotes;$('globalNotesButton').classList.toggle('active',isNotes);if(isNotes){document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active'));notebook.render();return;}
@@ -95,6 +113,13 @@ function renderLibrary(){
   const type=e.name.split('.').pop().toUpperCase(),title=e.name.replace(/\.(pdf|txt|md)$/i,''),location=e.handle?(e.path.split('/').slice(0,-1).join('/')||folder?.name||'本地文件夹'):t('本地副本');
   return '<article class="document-card" data-document-row="'+esc(e.id)+'"><button class="document-open" data-doc="'+esc(e.id)+'" aria-label="'+(language()==='en'?'Select ':'选择 ')+esc(title)+'" title="'+(language()==='en'?'Double-click to read ':'双击阅读 ')+esc(title)+'"><span class="document-name">'+icon('file')+'<span>'+esc(title)+'</span></span><span class="document-type">'+esc(type)+'</span><span class="document-location" title="'+esc(location)+'">'+esc(location)+'</span><span class="document-recent">'+formatReadTime(recent[e.id])+'</span></button><button class="favorite-button '+(favorites.has(e.id)?'saved':'')+'" data-favorite="'+esc(e.id)+'" aria-label="'+(language()==='en'?(favorites.has(e.id)?'Unfavorite ':'Favorite '):(favorites.has(e.id)?'取消收藏 ':'收藏 '))+esc(title)+'">'+icon('star')+'</button></article>';
  }).join(''):'<div class="empty-state">'+(libraryFilter==='starred'?'收藏的文献会出现在这里。':libraryFilter==='recent'?'还没有阅读记录。':'没有找到文献。')+'</div>';
+ $('libraryList').querySelectorAll('[data-document-row]').forEach(row=>{
+  const entry=list.find(item=>item.id===row.dataset.documentRow);
+  const remove=button(ui('移除','Remove'),()=>requestRemoveDocument(entry));
+  remove.className='document-remove';remove.dataset.removeDoc=entry.id;remove.title=ui('从文献库移除','Remove from library');remove.setAttribute('aria-label',remove.title+' '+entry.name);row.append(remove);
+  row.oncontextmenu=e=>{e.preventDefault();selectDocument(entry.id);requestRemoveDocument(entry);};
+  row.addEventListener('keydown',e=>{if(e.key==='Delete'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();requestRemoveDocument(entry);}});
+ });
  $('libraryList').querySelectorAll('[data-doc]').forEach(b=>{
   b.onclick=()=>selectDocument(b.dataset.doc);
   b.ondblclick=guard(()=>openDocument(entries().find(e=>e.id===b.dataset.doc)));
@@ -116,9 +141,38 @@ $('chooseFolder').onclick=async()=>{try{if(!window.showDirectoryPicker){$('folde
 $('refreshLibrary').onclick=async()=>{try{if(!folder){await refreshCache();return;}if(await folder.requestPermission({mode:'read'})!=='granted'){toast('需要文件夹访问权限才能重新读取文献。');return;}await scanFolder();toast('文献库已刷新');}catch(e){toast(e.message);}};
 async function refreshCache(){cachedEntries=(await dbOp('files','getAll')).map(f=>({...f,kind:'file'}));renderLibrary();}
 $('importFiles').onclick=()=>$('fileInput').click();
-async function importFiles(files,forceCache=false){const valid=[...files].filter(f=>supports(f.name));if(!valid.length){toast('请选择 PDF、TXT 或 Markdown 文件。');return;}let copyToFolder=folder&&!forceCache;if(copyToFolder&&await folder.requestPermission({mode:'readwrite'})!=='granted'){toast('未获得文件夹写入权限，没有导入文件。');return;}let count=0;for(const file of valid){if(file.size>200*1024*1024){toast(file.name+' 超过 200 MB，已跳过。');continue;}if(copyToFolder){let name=file.name,i=1;while(true){try{await folder.getFileHandle(name);const dot=file.name.lastIndexOf('.');name=file.name.slice(0,dot)+` (${i++})`+file.name.slice(dot);}catch(e){if(e.name==='NotFoundError')break;throw e;}}const h=await folder.getFileHandle(name,{create:true});const w=await h.createWritable();try{await w.write(file);await w.close();}catch(e){await w.abort();throw e;}}else{await dbOp('files','put',{id:'local:'+crypto.randomUUID(),name:file.name,blob:await snapshotFile(file),path:file.webkitRelativePath||'浏览器本地副本'});}count++;}if(copyToFolder)await scanFolder();await refreshCache();toast(`已导入 ${count} 篇文献${copyToFolder?'到本地文件夹':'到浏览器本地库'}`);}
-$('fileInput').onchange=guard(async e=>{await importFiles(e.target.files);e.target.value='';});
-$('folderInput').onchange=guard(async e=>{await importFiles(e.target.files,true);e.target.value='';toast('此浏览器使用文件夹副本模式，内容已保存到浏览器本地库。');});
+let importPending=false;
+async function importFiles(files,forceCache=false){
+ if(importPending)return;
+ const valid=[...files].filter(f=>supports(f.name));
+ if(!valid.length){toast('请选择 PDF、TXT 或 Markdown 文件。');return;}
+ importPending=true;$('importFiles').disabled=true;
+ try{
+  const destination=await chooseImportDestination(forceCache?null:folder);
+  if(!destination)return;
+  const target=destination.kind==='folder'?destination.handle:null;
+  let count=0;
+  for(const file of valid){
+   if(file.size>200*1024*1024){toast(file.name+' 超过 200 MB，已跳过。');continue;}
+   if(target){
+    let name=file.name,i=1;
+    while(true){try{await target.getFileHandle(name);const dot=file.name.lastIndexOf('.');name=file.name.slice(0,dot)+` (${i++})`+file.name.slice(dot);}catch(e){if(e.name==='NotFoundError')break;throw e;}}
+    const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();
+    try{await w.write(file);await w.close();}catch(e){await w.abort().catch(()=>{});throw e;}
+   }else{
+    await dbOp('files','put',{id:'local:'+crypto.randomUUID(),name:file.name,blob:await snapshotFile(file),path:file.webkitRelativePath||'浏览器本地副本'});
+   }
+   count++;
+  }
+  if(count){libraryFilter='all';$('librarySearch').value='';history.replaceState(null,'',location.pathname);}
+  if(target&&target===folder)await scanFolder();
+  await refreshCache();
+  toast(ui(`已导入 ${count} 篇文献${target?'到本地文件夹':'到本机库'}`,`Imported ${count} document${count===1?'':'s'} ${target?'to the folder':'to the local library'}`));
+ }finally{importPending=false;$('importFiles').disabled=false;}
+}
+for(const [id,forceCache]of [['fileInput',false],['folderInput',true]]){
+ $(id).onchange=guard(async e=>{const input=e.target;try{await importFiles([...input.files],forceCache);}finally{input.value='';}});
+}
 $('librarySearch').oninput=renderLibrary;
 for(const id of ['libraryButton','readerLibrary'])$(id).onclick=()=>{libraryFilter='all';history.replaceState(null,'',location.pathname);showLibrary();};
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).close());

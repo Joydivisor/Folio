@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0-beta.9 · maintenance update 2026-11-02
+
+- Fix single-file import into an existing read-only library folder: check write access first, then request missing permission only from a new Allow and import button click.
+- Offer explicit local-copy storage when folder authorization is declined or unavailable. Cancel imports nothing; cancel and failure both reset the file picker so the same document can be selected again.
+- Return successful imports to All documents so a local copy is visible even when import started from a folder filter. Existing files keep collision-safe names.
+
+- Add visible Remove controls, a right-click confirmation and Delete-key support for library documents. Imported copies can be deleted; linked folder entries stay hidden after reopening. Original disk files, notes and annotations are retained.
+
+Validation: automated tests and isolated Electron checks cover import permissions, cancellation, local-copy persistence, deletion and folder-entry removal. All platform installers are rebuilt for this maintenance update.
+
 ## 1.0.0-beta.9 · 2026-11-01
 
 - PDF appearance is unchanged. Reading order is organized inside its transparent text layer automatically; no Reading mode toggle.

@@ -28,6 +28,7 @@ button.primary:hover,.send-button:hover{background:var(--secondary);color:var(--
 .document-card{background:var(--surface);border-color:var(--line);box-shadow:var(--edge);border-radius:14px}
 .document-name{color:var(--text)}.document-name .icon,.document-type,.document-location,.document-recent,.favorite-button{color:var(--muted)}
 .favorite-button:hover,.favorite-button.saved{color:var(--accent)}.document-card.selected,.list-mode .document-card.selected{background:color-mix(in srgb,var(--accent) 10%,var(--pane));border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.document-remove{position:absolute;right:46px;bottom:8px;min-height:32px;padding:5px 9px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:12px}.document-remove:hover,.document-remove:focus-visible{background:var(--hover);color:var(--text)}.list-mode .document-remove{position:static;flex-shrink:0;margin-left:5px}.workspace-dialog[data-remove-document],.workspace-dialog[data-import-permission]{width:min(480px,calc(100vw - 40px))}
 .list-mode .document-card:nth-child(even){background:var(--hover)}.list-mode .document-card:hover{background:var(--selected)}
 .learning{background:var(--pane)}.reader{background:var(--bg)}
 .reader-topbar,.learning-header{background:var(--glass);backdrop-filter:blur(22px) saturate(120%);border-color:var(--line);height:56px;min-height:56px}

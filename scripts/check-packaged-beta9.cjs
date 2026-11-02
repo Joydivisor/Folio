@@ -6,7 +6,7 @@ const {pathToFileURL}=require('node:url');
  const asar=require('@electron/asar');
  const files=asar.listPackage(archive);const allowed=new Set(['public','desktop','node_modules','build','package.json','server.mjs']);
  if(files.some(f=>!allowed.has(f.split(/[\\/]/).filter(Boolean)[0])))throw Error('Unexpected package root');
- for(const file of ['public/app.js','public/document-file.js','public/pdf-selection.js','public/reflow-layout.js','public/reflow-view.js','public/reflow.css','public/workspace-manager.js','public/annotations.js']){
+ for(const file of ['public/app.js','public/document-file.js','public/import-permission.js','public/workspace-store.js','public/appearance.css','public/pdf-selection.js','public/reflow-layout.js','public/reflow-view.js','public/reflow.css','public/workspace-manager.js','public/annotations.js']){
   if(!asar.extractFile(archive,file).equals(fs.readFileSync(file)))throw Error('Stale packaged file: '+file);
  }
  for(const file of files.filter(f=>/^[/\\](public|desktop)[/\\].*\.(js|cjs|mjs|json|html)$/.test(f))){const text=asar.extractFile(archive,file.replace(/^[/\\]/,'')).toString();if(/(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{24,}/.test(text))throw Error('Credential pattern in runtime');}
