@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-beta.9 · selection update 2026-11-03 (r3)
+
+- Detect sustained column gutters before merging same-baseline PDF text. Narrow two-column abstracts and three-column pages retain their reading order; original page pixels and text positions stay unchanged.
+- Add large start/end selection handles, a magnifier of the original text, character-boundary snapping and edge auto-scroll. Both handles support keyboard adjustment, reverse selection and crossing endpoints.
+- Preserve the selected source when dragging into AI; show the drop ripple for pointer-based drags as well as native drops. Clear selection controls when pages or documents change.
+- Add a top-right circled question mark and F1 feature guide, with ten searchable bilingual topics covering reading, AI, annotations, LaTeX notes, settings, backups and shortcuts.
+
+Validation: 103 automated tests, real two-column PDF pointer tests, unchanged text-layer geometry, source-linked notes/annotations, import-permission regression checks and native packaged-runtime checks. The tester's exact biomedical PDF was unavailable; narrow-gutter synthetic cases and a public two-column paper cover the reported layout pattern.
+
 ## 1.0.0-beta.9 · maintenance update 2026-11-02
 
 - Fix single-file import into an existing read-only library folder: check write access first, then request missing permission only from a new Allow and import button click.

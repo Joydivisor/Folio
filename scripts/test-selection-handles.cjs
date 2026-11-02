@@ -1,0 +1,59 @@
+// Trusted-pointer checks in an isolated Chromium profile. No API keys or user files.
+const {app,BrowserWindow}=require('electron');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {pathToFileURL}=require('node:url');
+const root=path.resolve(__dirname,'..'),temp=fs.mkdtempSync(path.join(root,'tests/reports/selection-'));
+app.setPath('userData',path.join(temp,'profile'));
+let win,server;const checks=[],wait=ms=>new Promise(r=>setTimeout(r,ms));
+const js=code=>win.webContents.executeJavaScript(code);
+async function until(code){for(let i=0;i<100;i++){if(await js(code))return;await wait(100);}throw Error('Timed out: '+code);}
+async function mouse(type,p){await win.webContents.debugger.sendCommand('Input.dispatchMouseEvent',{type,x:p.x,y:p.y,button:'left',buttons:type==='mouseReleased'?0:1,clickCount:type==='mouseMoved'?0:1});}
+async function drag(a,b,hold){await mouse('mousePressed',a);for(let i=1;i<=8;i++)await mouse('mouseMoved',{x:a.x+(b.x-a.x)*i/8,y:a.y+(b.y-a.y)*i/8});await wait(80);if(hold)await hold();await mouse('mouseReleased',b);await wait(100);}
+async function key(key,code=key,vk){await win.webContents.debugger.sendCommand('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode:vk});await win.webContents.debugger.sendCommand('Input.dispatchKeyEvent',{type:'keyUp',key,code,windowsVirtualKeyCode:vk});await wait(100);}
+async function shot(name){await wait(120);fs.writeFileSync(path.join(root,'tests/reports/'+name+'.png'),(await win.webContents.capturePage()).toPNG());}
+async function point(selector){return js(`(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);}
+app.whenReady().then(async()=>{
+ const {makeServer}=await import(pathToFileURL(path.join(process.env.FOLIO_TEST_ARCHIVE||root,'server.mjs')).href);
+ server=makeServer({port:4197});await new Promise(r=>server.listen(4197,'127.0.0.1',r));
+ win=new BrowserWindow({width:1480,height:1050,show:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,offscreen:true,backgroundThrottling:false}});
+ await win.loadURL('http://127.0.0.1:4197');await until("!!document.querySelector('#fileInput')?.onchange");win.webContents.debugger.attach('1.3');
+ const file=process.env.FOLIO_SELECTION_PDF||path.join(root,'tests/reports/fixtures/bert.pdf');
+ if(!fs.existsSync(file))throw Error('Set FOLIO_SELECTION_PDF to a two-column PDF (default ignored fixture: bert.pdf).');
+ const {root:dom}=await win.webContents.debugger.sendCommand('DOM.getDocument');const {nodeId}=await win.webContents.debugger.sendCommand('DOM.querySelector',{nodeId:dom.nodeId,selector:'#fileInput'});
+ await win.webContents.debugger.sendCommand('DOM.setFileInputFiles',{nodeId,files:[file]});await until("document.querySelectorAll('[data-doc]').length===1");
+ await js("(async()=>{const m=await import('/vendor/build/pdf.mjs'),render=m.TextLayer.prototype.render;m.TextLayer.prototype.render=async function(...a){await render.apply(this,a);window.__before=this.textDivs.filter(n=>n.isConnected).map(n=>({n,r:n.getBoundingClientRect().toJSON()}));};})()");
+ await js("document.querySelector('[data-doc]').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))");await until("document.querySelectorAll('.semantic-block span[data-block]').length>20");
+ const stats=await js(`(()=>{const s=[...document.querySelectorAll('.semantic-block span[data-block]')].filter(e=>e.textContent.trim()),cols=[...new Set(s.map(e=>e.dataset.column))],delta=Math.max(0,...__before.flatMap(({n,r})=>{const b=n.getBoundingClientRect();return ['x','y','width','height'].map(k=>Math.abs(r[k]-b[k]));}));window.__glyph=(e,offset)=>{const r=document.createRange();r.setStart(e.firstChild,offset);r.setEnd(e.firstChild,offset+1);const b=r.getBoundingClientRect();return {x:b.left,y:b.top+b.height/2};};window.__left=s.filter(e=>e.dataset.column==='0'&&e.textContent.length>20&&e.getBoundingClientRect().top>350&&e.getBoundingClientRect().bottom<850);return {cols,delta,left:__left.length};})()`);
+ assert(stats.cols.includes('0')&&stats.cols.includes('1'),JSON.stringify(stats));assert(stats.delta<.1);assert(stats.left>=5);checks.push('real two-column PDF; unchanged pixel geometry');
+ const a=await js('__glyph(__left[0],2)'),b=await js('__glyph(__left[4],10)');
+ await drag(a,b,async()=>{assert(await js("!document.querySelector('.selection-loupe').hidden"));await shot('selection-loupe');});
+ await until("[...document.querySelectorAll('.selection-handle')].filter(b=>!b.hidden).length===2");
+ let selection=await js(`(()=>{const s=getSelection();return {a:s.getRangeAt(0).startContainer.parentElement.dataset.column,b:s.getRangeAt(0).endContainer.parentElement.dataset.column,text:s.toString()};})()`);assert.equal(selection.a,'0');assert.equal(selection.b,'0');assert(selection.text.length>50);checks.push('left column drag excludes right column; live magnifier; both handles');
+ const original=await js('({node:getSelection().getRangeAt(0).startContainer.parentElement.textContent,offset:getSelection().getRangeAt(0).startOffset,length:getSelection().toString().length})');
+ let h=await point('.selection-end');await drag(h,{x:h.x-28,y:h.y-35});
+ const refined=await js('({node:getSelection().getRangeAt(0).startContainer.parentElement.textContent,offset:getSelection().getRangeAt(0).startOffset,length:getSelection().toString().length})');assert.equal(refined.node,original.node);assert.equal(refined.offset,original.offset);assert(refined.length<original.length);checks.push('end handle shrinks while start remains fixed');
+ await js("document.querySelector('.selection-end').focus()");const n=await js('getSelection().toString().length');await key('ArrowRight','ArrowRight',39);assert.equal(await js('getSelection().toString().length'),n+1);checks.push('keyboard boundary adjustment');
+ await shot('selection-handles-light');
+ await key('Escape','Escape',27);await until("getSelection().isCollapsed && [...document.querySelectorAll('.selection-handle')].every(b=>b.hidden) && !document.querySelector('.selection-dock')");checks.push('Escape clears handles and floating actions');
+ await drag(b,a);assert.equal(await js('getSelection().getRangeAt(0).startContainer.parentElement.dataset.column'),'0');checks.push('reverse selection');
+ h=await point('.selection-start');await drag(h,{x:h.x+35,y:h.y+100});assert(await js('getSelection().toString().length>0'));checks.push('start handle crosses endpoint without losing selection');
+ await key('Escape','Escape',27);
+ await drag(a,b);h=await point('.selection-end');const edge=await js("(()=>{const r=document.querySelector('#readerViewport').getBoundingClientRect();return {x:r.left+150,y:r.bottom-8};})()");const scrollBefore=await js('document.querySelector("#readerViewport").scrollTop');
+ await drag(h,edge,async()=>{await wait(600);});assert(await js('document.querySelector("#readerViewport").scrollTop')>scrollBefore);assert(await js("document.querySelector('.selection-loupe').hidden"));checks.push('edge auto-scroll; loupe hides after release');
+ await key('Escape','Escape',27);await js('document.querySelector("#readerViewport").scrollTop=0');await wait(150);
+ await drag(a,b);const drop=await point('#learning'),inside=await js('__glyph(__left[2],15)');await drag(inside,drop,async()=>{});await until("!!document.querySelector('.drop-feedback')");assert(await js('document.querySelector("#quoteText").textContent.length>20'));checks.push('trusted drag to AI keeps selected passage and shows feedback');
+ await js("document.querySelector('#zoomIn').click()");await until("document.querySelectorAll('.pdf-selection-controls').length===1 && !document.querySelector('.loading')");assert(await js("[...document.querySelectorAll('.selection-handle')].every(b=>b.hidden) && document.querySelectorAll('.selection-loupe').length===1"));
+ await js("document.querySelector('#nextPage').click()");await until("document.querySelector('#pageNumber').value==='2' && document.querySelectorAll('.semantic-block').length>1");assert(await js("document.querySelectorAll('.selection-loupe').length===1 && [...document.querySelectorAll('.selection-handle')].every(b=>b.hidden)"));checks.push('zoom and page changes replace controls without orphaned loupe');
+ // Native modal, searchable bilingual help, command routing and constrained widths.
+ await js("document.querySelector('#helpButton').focus();document.querySelector('#helpButton').click()");await until("document.querySelector('#featureGuide[open]')");assert.equal(await js("document.querySelectorAll('[data-guide-topic]').length"),10);
+ await js("document.querySelector('[data-guide-topic=selection]').click()");await shot('feature-guide-light');
+ await js("const q=document.querySelector('#featureGuide input');q.value='LaTeX';q.dispatchEvent(new Event('input'))");assert.equal(await js("document.querySelectorAll('[data-guide-topic]').length"),1);checks.push('ten guide categories; bilingual search');
+ await key('Escape','Escape',27);await until("!document.querySelector('#featureGuide')");assert(await js("document.activeElement.id==='helpButton'"));await key('F1','F1',112);await until("document.querySelector('#featureGuide[open]')");checks.push('F1 opens; Escape closes and returns focus');
+ await js("document.querySelector('[data-guide-topic=settings]').click();document.querySelector('.guide-action').click()");await until("!!document.querySelector('dialog[open]')&&!document.querySelector('#featureGuide')");await key('Escape','Escape',27);checks.push('guide action routes to actual settings');
+ win.setSize(620,760);await js("window.folioAppearance.set('dark');document.querySelector('#helpButton').click()");await wait(250);const overflow=await js("(()=>{const r=document.querySelector('#featureGuide');return {w:r.getBoundingClientRect().width,inner:innerWidth,body:r.scrollWidth>r.clientWidth+2};})()");assert(overflow.w<=overflow.inner&&!overflow.body);await shot('feature-guide-dark-narrow');checks.push('dark and narrow guide layout');
+ await key('Escape','Escape',27);win.setSize(1480,1050);await wait(150);
+ await js("(async()=>{(await import('/i18n.js')).setLanguage('en');document.querySelector('#helpButton').click();})()");await until("document.querySelector('#featureGuide h2')?.textContent==='Feature guide'");await js("document.querySelector('#featureGuide input').value='选文';document.querySelector('#featureGuide input').dispatchEvent(new Event('input'))");assert(await js("document.querySelectorAll('[data-guide-topic]').length>0"));await shot('feature-guide-english');await key('Escape','Escape',27);checks.push('English guide and Chinese search terms');
+ const alignment=await js("['#helpButton','#themeToggle','#settingsButton'].map(s=>{const e=document.querySelector(s);if(!e)return null;const r=e.getBoundingClientRect();return r.y+r.height/2;}).filter(x=>x!==null)");assert(Math.max(...alignment)-Math.min(...alignment)<2);checks.push('top icons centered on same baseline');
+ await js("document.querySelector('#closeReaderTab').click()");await until("!document.querySelector('.selection-loupe,.pdf-selection-controls')");checks.push('closing a document cleans all selection overlays');
+ fs.writeFileSync(path.join(root,'tests/reports/selection-handles.json'),JSON.stringify({passed:true,stats,checks},null,2));console.log(JSON.stringify({passed:true,stats,checks},null,2));
+}).catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{win?.destroy();server?.close();server?.closeAllConnections();app.exit(process.exitCode||0);});

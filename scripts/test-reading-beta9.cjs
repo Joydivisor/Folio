@@ -12,7 +12,7 @@ async function until(expression){for(let i=0;i<100;i++){if(await win.webContents
 app.whenReady().then(async()=>{
  const {makeServer}=await import(pathToFileURL(path.join(process.env.FOLIO_TEST_ARCHIVE||root,'server.mjs')).href);
  server=makeServer({port:4196});await new Promise(r=>server.listen(4196,'127.0.0.1',r));
- win=new BrowserWindow({width:1380,height:920,show:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});
+ win=new BrowserWindow({width:1380,height:920,show:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false,offscreen:true}});
  await win.loadURL('http://127.0.0.1:4196');
  await until("!!document.querySelector('#fileInput')?.onchange");
  const source=path.join(temp,'source');fs.mkdirSync(source);const file=path.join(source,'first-import.pdf');fs.copyFileSync(path.join(root,'tests/fixtures/group-theory.pdf'),file);

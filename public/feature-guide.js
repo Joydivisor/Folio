@@ -1,0 +1,82 @@
+import {ui,node,button,modal} from './workspace-ui.js';
+import {icon} from './icons.js';
+
+// Every topic describes a shipped feature. Search works in both languages.
+export const helpTopics=[
+ {id:'start',name:['开始使用','Getting started'],sections:[
+  ['从一篇文章开始','Start with a paper','在文献库点击「导入」，选择 PDF、TXT 或 Markdown；也可以连接自己的本地文件夹。双击文献打开，点击标签右侧 × 关闭。','In Library, choose Import for a PDF, TXT or Markdown file, or connect a local folder. Double-click a document to read; use the × on its tab to close it.'],
+  ['选段 → 理解 → 留下笔记','Select → understand → keep a note','选中文字后，调整首尾的蓝色拖柄，再选择「解释」「分步」「可视化」或「记笔记」。也可以把选文拖到右侧画布。','Select a passage, adjust the blue handles, then choose Explain, Steps, Visualize or Add note. You can also drag the passage into the canvas on the right.'],
+  ['连接自己的模型','Connect your model','打开设置 → AI 与记忆，选择服务商、填入 API Key，点击「连接并获取模型」，选择模型并保存。阅读和笔记不需要 API Key。','Open Settings → AI & memory, choose a provider, enter your API key, then Connect & load models. Choose a model and save. Reading and notes do not require an API key.']
+ ],action:['ai-settings','设置 AI','Set up AI']},
+ {id:'library',name:['文献库与文件','Library & files'],sections:[
+  ['导入与连接文件夹','Import and connect folders','单个文件会保存为 Folio 本地副本；连接文件夹后，可授权写入该文件夹，或选择保存在 Folio 中。文件选择结束后若出现授权提示，点击「允许并导入」即可继续。','Single-file imports can be stored as local Folio copies. With a connected folder, allow writing there or choose a Folio copy. If asked for write access after choosing a file, click Allow and import.'],
+  ['查找、收藏与显示方式','Find, favorite and arrange','使用左侧搜索、最近阅读或已收藏筛选。列表上方可以切换列表／网格和排序；星标收藏文献。刷新重新扫描已连接文件夹。','Use the sidebar search, Recently read or Starred filters. Switch between list and grid, change sorting, and star documents. Refresh rescans the connected folder.'],
+  ['移除文献','Remove a document','使用条目上的「移除」、右键或 Delete 键，确认后从 Folio 文献库移除。磁盘原文件、笔记和批注会保留。缺失原文件时，可在阅读页重新定位。','Use Remove, right-click, or Delete on a document and confirm. Original disk files, notes and annotations are kept. If a source is missing, locate it again from the reader.']
+ ],action:['library','打开文献库','Open Library']},
+ {id:'selection',name:['精确选文','Selecting text'],sections:[
+  ['先选一段，再微调','Select first, then refine','在 PDF 正文上拖动鼠标选文。选区起点和终点会出现蓝色圆点；拖动任意一端即可扩展或缩短选区，另一端保持不动。','Drag over PDF text to select it. Blue handles appear at the start and end. Drag either handle to extend or shorten the passage while keeping the other end fixed.'],
+  ['放大预览与滚动','Magnifier and scrolling','拖柄调整时，上方会放大显示原文和当前边界。将指针移到阅读区上、下边缘可自动滚动。用 Tab 聚焦拖柄后，左右方向键逐字微调，上下方向键调整到邻近行。','While adjusting, a magnifier shows the original text and the current boundary. Move toward the top or bottom edge of the reader to scroll. Tab to a handle, then use Left/Right to adjust by character or Up/Down to move between nearby lines.'],
+  ['段落与双栏论文','Paragraphs and columns','双击选词，连续点击三次选段落；鼠标移到段落旁，¶ 按钮也能整段选择。按住 Shift 点击 ¶ 可以连续选择多个段落。双栏论文按先左栏、后右栏的顺序选择；跨到另一栏后会包含两端之间的正文。','Double-click a word or triple-click a paragraph. The ¶ control beside a paragraph selects the whole paragraph; Shift-click it to extend across paragraphs. Two-column papers follow the left column before the right. Crossing to another column includes the text between both endpoints.'],
+  ['复制、发送与取消','Copy, send and dismiss','Ctrl/Cmd+C 复制选文。拖动选区内部可送到右侧 AI，也可以使用浮动工具栏。点击空白处或按 Escape 取消选区；翻页和关闭文档也会清除选区。','Ctrl/Cmd+C copies the passage. Drag inside the selection to send it to AI, or use the floating toolbar. Click blank space or press Escape to dismiss. Changing pages or closing the document also clears it.'],
+  ['扫描页没有文字层时','Scanned pages','图片扫描页需要先通过「工具 → 本页 OCR」识别。识别结果可校正、保存到索引，也可送给 AI 或存为笔记；它不会改变原 PDF 的图像。','For scanned pages, use Tools → Recognize page text. Review the result, save it to the index, send it to AI or add it to notes. OCR does not change the original PDF image.']
+ ]},
+ {id:'reading',name:['阅读与搜索','Reading & search'],sections:[
+  ['翻页、缩放与书签','Pages, zoom and bookmarks','用上一页／下一页按钮或输入页码跳转。−／＋调整缩放，点击缩放比例适合宽度。「记住页码」保存下次打开的位置。','Use the page arrows or enter a page number. −/+ changes zoom; click the percentage to fit the page width. Remember page saves your position for the next time you open the document.'],
+  ['目录、全文搜索与图表引用','Outline, search and source references','在「工具 → 目录与全文搜索」查看目录、搜索原文、按页定位结果。引用公式或图表时，尽量带上编号、说明和相邻文字，方便 AI 检索正确的上下文。','Tools → Outline & full-text search shows the outline and searches source text. Results link to their page. When asking about a formula or figure, include its number, caption and nearby text to retrieve useful context.'],
+  ['调整工作区','Arrange your workspace','拖动中间分隔线调整阅读和 AI 的宽度。右上方侧栏按钮收起／展开 AI；展开画布按钮提供专注视图。布局也可从「视图」菜单调整。','Drag the divider to resize the reader and AI. The top-right sidebar button hides or shows AI; Focus canvas expands the canvas. You can also use the View menu.']
+ ],action:['navigation','目录与全文搜索','Outline & search',true]},
+ {id:'ai',name:['AI 与交互画布','AI & canvas'],sections:[
+  ['三种理解方式','Three ways to understand','「解释」用于概念和原文解读；「分步」展示推导或过程；「可视化」请求适合当前内容的交互演示。AI 会参考选段与本书相关原文，不同内容会得到不同形式的回答。','Explain interprets the passage; Steps walks through reasoning or a process; Visualize requests an interactive view suited to the content. AI uses the passage and relevant document context, so the output varies with the material.'],
+  ['支持的演示','Available presentations','支持置换作用、导出列、立方体／正四面体／正八面体的三维旋转，以及分步推导、流程、对照和关系图。三维视图可拖动观察；演示中的动作按钮与相机视角是分开的。超出这些类型的内容会以文字或其他适合的视图解释。','Presentations include permutations, derived series, 3D rotations of cubes, tetrahedra and octahedra, derivations, processes, comparisons and concept maps. Drag a 3D view to orbit; action controls are independent of the camera. Other material uses text or a suitable supported view.'],
+  ['继续追问与新问题','Follow up or start fresh','底部小输入框用于继续追问。解释／演示切换查看同一结果；建议动作会请求新的结果。点击右上角 ＋ 或「新问题」开始独立对话；切换文献也会隔离上下文。','Use the bottom input to follow up. Explanation/Presentation switches between views of the same result; suggested actions request a new result. Use + or New question for a separate conversation. Changing documents also separates context.'],
+  ['等待、停止与原文','Progress, stopping and context','等待时显示进度文字和柔和光效，可点击停止。勾选「参考本书原文」时，相关段落会发送给所选模型服务。原图可保存到笔记；当前文字模型依据提取文字解读，不能直接看懂图像像素。','While waiting, progress text and a soft glow indicate activity; use Stop to cancel. With document context enabled, relevant passages are sent to your chosen model service. Source images can be saved to notes; text models work from extracted text rather than image pixels.'],
+  ['作品与版本','Artifacts and versions','在结果菜单中编辑、保存版本、回退或回看来源；「文件 → 交互作品」集中查找已保存作品。保存时会保留原文来源和实验状态。','Use the result menu to edit, save a version, roll back or revisit the source. File → Interactive artifacts opens saved work. Saved artifacts retain source references and experiment state.']
+ ],action:['ai-settings','AI 连接设置','AI connection settings']},
+ {id:'annotations',name:['高亮与批注','Highlights & annotations'],sections:[
+  ['高亮、下划线与便笺','Highlight, underline and comment','先选中文字，再点「高亮」或「下划线」；「便笺」可以给选文或当前页添加评论。颜色菜单切换批注颜色。','Select text, then choose Highlight or Underline. Page note adds a comment to the passage or the current page. The color menu changes the annotation color.'],
+  ['回看与整理','Review and organize','打开批注侧栏，可以搜索摘录、修改评论、跳回原文、询问 AI 或保存到笔记。可将当前文献的批注汇总为笔记或导出；删除批注后可撤销。','The annotation panel lets you search excerpts, edit comments, jump to the source, ask AI and save a note. Compile or export annotations for the current document; deletion can be undone.']
+ ],action:['annotations','打开批注面板','Open annotations',true]},
+ {id:'notes',name:['笔记与 LaTeX','Notes & LaTeX'],sections:[
+  ['保存与编辑','Save and edit','从选区、批注或 AI 结果保存笔记。整理后的笔记使用 Markdown 与 LaTeX；保存前可编辑并预览。行内公式用 $…$，独立公式用 $$…$$。','Save a selection, annotation or AI result as a note. Organized notes use Markdown and LaTeX, with an editable preview before saving. Use $…$ for inline math and $$…$$ for display math.'],
+  ['来源与导出','Sources and export','一级侧栏的「笔记」按书籍和问题呈现来源，可搜索并回到原文；有实验快照的笔记可以恢复交互作品。导出 Markdown 可在 Obsidian 等编辑器中继续使用。','Notes in the main sidebar show the document and question behind each note. Search or revisit the source; notes with an experiment snapshot can restore that artifact. Export Markdown for editors such as Obsidian.'],
+  ['自动整理对话','Conversation notes','默认关闭。在设置 → AI 与记忆中开启后，结束问题、新建演示、换书或离开阅读时会整理为本机笔记。保存的笔记不会自动混入下一段独立对话。','Off by default. Enable it in Settings → AI & memory to archive conversations when you end a question, create a new presentation, change documents or leave reading. Saved notes are not automatically mixed into a new independent conversation.']
+ ],action:['notes','打开笔记','Open Notes']},
+ {id:'settings',name:['设置与密钥','Settings & keys'],sections:[
+  ['语言与外观','Language and appearance','通用设置支持简体中文、English 或跟随系统。外观支持日间、夜间、跟随系统及减少动态效果；右上方太阳／月亮按钮可快速切换。','General settings offer Simplified Chinese, English or the system language. Appearance supports light, dark, system and reduced motion; the sun/moon button switches appearance quickly.'],
+  ['服务商与可用模型','Providers and models','预设服务商会自动填写地址；自定义兼容服务可在高级连接设置中填写 Base URL 和模型 ID。连接后读取可用模型列表，再使用「测试模型调用」检查。','Provider presets fill in the endpoint. For a custom compatible service, enter the Base URL and model ID in advanced connection settings. Connect to load available models, then use Test model call.'],
+  ['本机保存与数据去向','Local storage and data flow','桌面版可选择用系统保护加密保存密钥，服务商之间独立保存；也可只在本次运行中使用。密钥不进入工作区备份。调用 AI 时，问题与相关原文会发送给所选服务商。','On desktop, keys can be encrypted using system protection and saved separately per provider, or kept for the current session only. Keys are excluded from workspace backups. AI requests send your question and relevant source passages to your selected provider.']
+ ],action:['settings','打开设置','Open Settings']},
+ {id:'backup',name:['备份、Zotero 与更新','Backup, Zotero & updates'],sections:[
+  ['备份与恢复','Back up and restore','文件菜单提供工作区备份、恢复备份及恢复上次导入前的数据。文献副本可选择包含；恢复前检查内容，密钥需要单独配置。单独导出笔记不会备份全部工作区。','The File menu offers workspace backup, restore and recovery of the previous workspace. Including document copies is optional. Review the contents before restoring; configure keys separately. Exporting notes alone is not a full workspace backup.'],
+  ['Zotero 导入','Import from Zotero','先在 Zotero 中导出 RDF，再使用「文件 → 导入 Zotero」。这是单向导入，不会自动双向同步后续修改。','Export RDF from Zotero, then use File → Import Zotero. This is a one-way import; later changes are not automatically synchronized both ways.'],
+  ['更新软件','Update Folio','帮助 → 检查更新可打开下载入口。安装前退出 Folio；Windows 安装到原位置，Mac 替换应用，Linux 安装新版 DEB。已有文献库、笔记和设置会保留。','Help → Check for updates opens the download entry. Quit Folio first; install at the same Windows location, replace the Mac app, or install the newer Linux DEB. Your library, notes and settings are retained.']
+ ],action:['backup','备份工作区','Back up workspace']},
+ {id:'shortcuts',name:['快捷键','Keyboard shortcuts'],sections:[
+  ['常用操作','Common actions','Ctrl/Cmd+O：导入文献；Ctrl/Cmd+K：搜索文献库；Ctrl/Cmd+,：设置；Ctrl/Cmd+C：复制选文；F1：功能说明；Escape：取消选区或关闭说明。','Ctrl/Cmd+O: import; Ctrl/Cmd+K: search Library; Ctrl/Cmd+,: settings; Ctrl/Cmd+C: copy selection; F1: feature guide; Escape: dismiss selection or close the guide.'],
+  ['精确选区与菜单','Selection and menus','Tab 在控件间移动。聚焦选区拖柄后用方向键调整边界；Shift 点击段落 ¶ 扩展选择。菜单可用方向键导航，Enter 执行。','Tab moves between controls. With a selection handle focused, use arrows to refine its boundary. Shift-click a paragraph ¶ to extend selection. Use arrow keys in menus and Enter to activate.']
+ ]}
+];
+export function openFeatureGuide(initial='start'){
+ const existing=document.getElementById('featureGuide');if(existing){existing.querySelector('input').focus();return;}
+ const opener=document.activeElement,{root,body}=modal(ui('功能说明','Feature guide'));root.id='featureGuide';root.classList.add('feature-guide');root.dataset.noI18n='';root.setAttribute('aria-label',ui('Folio 功能说明','Folio feature guide'));
+ const close=root.querySelector('header button');close.setAttribute('aria-label',ui('关闭功能说明','Close feature guide'));
+ const search=node('input',undefined,{type:'search',placeholder:ui('搜索功能或操作…','Search features or actions…')});search.setAttribute('aria-label',ui('搜索功能说明','Search feature guide'));
+ const layout=node('div',undefined,{className:'guide-layout'}),nav=node('nav',undefined,{className:'guide-nav'}),article=node('article',undefined,{className:'guide-article',tabIndex:0});nav.setAttribute('aria-label',ui('功能分类','Feature categories'));layout.append(nav,article);body.append(search,layout);let active=initial;
+ function draw(){
+  const q=search.value.trim().toLocaleLowerCase(),topics=helpTopics.filter(t=>JSON.stringify(t).toLocaleLowerCase().includes(q));nav.replaceChildren();article.replaceChildren();
+  if(!topics.some(t=>t.id===active))active=topics[0]?.id;
+  for(const topic of topics){const b=button(ui(...topic.name),()=>{active=topic.id;draw();article.focus();});b.dataset.guideTopic=topic.id;b.setAttribute('aria-current',topic.id===active?'page':'false');nav.append(b);}
+  const topic=topics.find(t=>t.id===active);if(!topic){article.append(node('p',ui('没有找到相关功能，试试「选文」「模型」或「笔记」。','No matching feature. Try “selection”, “model” or “notes”.')));return;}
+  article.append(node('h3',ui(...topic.name)));
+  for(const [zh,en,cn,english]of topic.sections){const section=node('section');section.append(node('h4',ui(zh,en)),node('p',ui(cn,english)));article.append(section);}
+  if(topic.action){const [id,zh,en,reader]=topic.action,b=button(ui(zh,en)+' ↗',()=>{root.close();window.dispatchEvent(new CustomEvent('folio-command',{detail:id}));});b.className='guide-action';b.disabled=Boolean(reader&&document.body.dataset.view!=='reader');if(b.disabled)b.title=ui('打开文献后使用','Open a document first');article.append(b);}
+  article.scrollTop=0;
+ }
+ nav.onkeydown=e=>{if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const bs=[...nav.querySelectorAll('button')],i=bs.indexOf(document.activeElement);bs[e.key==='Home'?0:e.key==='End'?bs.length-1:(i+(e.key==='ArrowDown'?1:-1)+bs.length)%bs.length]?.focus();};
+ search.oninput=draw;root.addEventListener('close',()=>opener?.isConnected&&opener.focus(),{once:true});draw();search.focus();
+}
+export function setupFeatureGuide(){
+ const trigger=document.getElementById('helpButton');trigger.innerHTML=icon('help');
+ const label=()=>{trigger.title=ui('功能说明','Feature guide');trigger.setAttribute('aria-label',trigger.title);};label();window.addEventListener('folio-language',label);
+ trigger.onclick=()=>openFeatureGuide();document.addEventListener('keydown',e=>{if(e.key==='F1'&&!document.querySelector('dialog[open]')){e.preventDefault();openFeatureGuide();}});
+}

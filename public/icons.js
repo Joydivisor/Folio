@@ -1,4 +1,5 @@
 const paths={
+ help:'<circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.3 2.3 0 0 1 4.5.6c0 1.5-2.2 1.9-2.2 3.4M12 16.6h.01"/>',
  library:'<path d="M4 4h4v16H4zM11 4h4v16h-4zM18 4l3 15"/>',
  grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
  list:'<path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01"/>',

@@ -1,3 +1,4 @@
+import {setupFeatureGuide,openFeatureGuide} from './feature-guide.js';
 import {menus,commandEnabled} from './commands.js';
 import {t,language,setLanguage,languageChoice,startLocalization} from './i18n.js';
 import {icon} from './icons.js';
@@ -5,6 +6,7 @@ const $=id=>document.getElementById(id);
 const pref=(key,fallback)=>{try{return JSON.parse(localStorage.getItem('folio-'+key))??fallback;}catch{return fallback;}};
 const store=(key,value)=>{try{localStorage.setItem('folio-'+key,JSON.stringify(value));}catch{}};
 export function setupShell({selection,fit,closeDocument,hasDocument}){
+ setupFeatureGuide();
  let opener=null,currentMenu=-1,returnFocus=null;
  const dialog=$('settingsDialog'),oldOpen=$('settingsButton').onclick;
  function selectPreference(name){
@@ -86,8 +88,8 @@ export function setupShell({selection,fit,closeDocument,hasDocument}){
    focusedEditor?.focus();if(window.folioDesktop){await window.folioDesktop.editCommand(id);return;}
    if(id==='paste'){const text=await navigator.clipboard.readText();document.execCommand('insertText',false,text);}else document.execCommand(id);return;
   }
-  if(id==='about')notice(language()==='en'?'Folio · Reading workspace\nRevision 8\nLocal library, source-linked notes and interactive explanations.':'Folio · 交互阅读台\nRevision 8\n本地文献库、可追溯笔记与交互解读。');
-  if(id==='shortcuts')notice(language()==='en'?'Ctrl+O · Import documents\nCtrl+K · Search library\nCtrl+, · Settings\nSelect a passage, then choose Explore selection or drag it into the AI panel.\nConversation notes are off by default. Enable them in Settings → AI & memory.':'Ctrl+O · 导入文献\nCtrl+K · 搜索文献\nCtrl+, · 设置\n选中文字后点击「解读选段」，或拖入 AI 面板。\n自动整理默认关闭，可在「设置 → AI 与记忆」开启。');
+  if(id==='about'){const version=await fetch('/api/version').then(r=>r.json()).then(v=>v.version).catch(()=>'');notice(language()==='en'?`Folio ${version}\nLocal library, source-linked notes and interactive explanations.`:`Folio ${version}\n本地文献库、可追溯笔记与交互解读。`);}
+  if(id==='shortcuts')openFeatureGuide('shortcuts');
  }
  window.addEventListener('resize',()=>closeMenu());
  window.addEventListener('folio-command',e=>execute(e.detail).catch(error=>notice(error.message)));
