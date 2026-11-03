@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0-beta.9 · library update 2026-11-03 (r4)
+
+- Isolate reader notes, counts and exports by document identity; group global notes by source, including unlinked and unavailable originals. Preserve old note URLs and source navigation.
+- Add nested topic collections with colors, multiple membership, parent filtering and collection notes. Deleting a collection preserves documents/notes and promotes its children.
+- Add editable document metadata, tags and reading status, combined tag/status filters, and unfiled/with-notes filters.
+- Group explicitly selected files as attachments under a document, choose its primary file, import attachments, or detach without deleting files or notes. Aggregate document notes while retaining attachment-specific reader notes.
+- Track same-version revision updates in the update dialog.
+- Include collections and metadata in validated workspace backups; existing file identities, page references and notes remain unchanged.
+
+Validation: 112 automated tests and 24 isolated note/library UI scenarios, plus PDF selection, import-permission and packaged-runtime regression checks. Native platform builds and installer checks are required before publishing.
+
+
 ## 1.0.0-beta.9 · selection update 2026-11-03 (r3)
 
 - Detect sustained column gutters before merging same-baseline PDF text. Narrow two-column abstracts and three-column pages retain their reading order; original page pixels and text positions stay unchanged.

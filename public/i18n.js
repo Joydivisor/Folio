@@ -1,5 +1,22 @@
 // Interface strings only. Documents, answers, quotes and authored notes are never translated.
 export const dictionary = Object.fromEntries(`
+资料|Details
+标签筛选|Filter by tag
+文献筛选|Filter documents
+全部状态|All statuses
+未读|Unread
+阅读中|Reading
+已读|Read
+未分类|Unfiled
+有笔记|With notes
+我的分类|My collections
+新建分类|New collection
+分类|Collections
+分类笔记|Collection notes
+按文献查看笔记|Notes by document
+全部笔记|All notes
+导出当前笔记|Export shown notes
+在笔记库打开|Open in Notes
 框选|Select area
 框选原文|Select source region
 导出 Markdown|Export Markdown

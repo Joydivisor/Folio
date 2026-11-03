@@ -13,7 +13,7 @@ import {createDocumentIndex,selectContext} from '../public/document-context.js';
 import {requestStructured} from '../public/structured-response.js';
 import {normalizeOCRText} from '../public/ocr-text.js';
 import {contextBelongsToSource} from '../public/selection-source.js';
-import {compareVersions,validateRelease} from '../public/release-info.js';
+import {compareVersions,validateRelease,isNewerRelease} from '../public/release-info.js';
 const empty=()=>Object.fromEntries(TABLES.map(t=>[t,[]]));
 const plan={kind:'explain',object:'Order',reason:'Proof'};
 const answer={title:'Order',paragraphs:[{text:'The smallest positive exponent.',sources:[]}]};
@@ -73,3 +73,5 @@ test('explicit theorem reference ranks remote source above generic neighboring t
 test('OCR normalization joins Chinese glyphs while preserving English spaces and lines',()=>{assert.equal(normalizeOCRText('群 论 与 几 何\nPermutation groups'), '群论与几何\nPermutation groups');});
 test('restored artifacts cannot request unbounded factorial group calculations',async()=>{const tables=empty();tables.artifacts=[createArtifact({id:'d',page:1},{kind:'derived',n:1000,object:'Group',reason:'Test'},answer)];await assert.rejects(makeBackup(tables));});
 test('relinked sources share context only for the same canonical document revision',()=>{const source={id:'old',documentId:'doc',revision:'v1'};assert.equal(contextBelongsToSource(source,{id:'new',documentId:'doc',revision:'v1'}),true);assert.equal(contextBelongsToSource(source,{id:'new',documentId:'doc',revision:'v2'}),false);assert.equal(contextBelongsToSource({...source,external:true},{id:'old',documentId:'doc',revision:'v1'}),false);});
+
+test('same-version installation revisions update monotonically',()=>{const current={version:'1.0.0-beta.9',revision:'r4'};assert(isNewerRelease({...current,revision:'r5'},current));assert(!isNewerRelease({...current,revision:'r3'},current));assert(!isNewerRelease(current,current));assert(isNewerRelease(current,{version:current.version}));assert(!isNewerRelease({...current,version:'1.0.0-beta.8',revision:'r99'},current));});

@@ -84,3 +84,11 @@ npm run installer:win
 私有仓库的 `Build macOS and Linux` 工作流在对应系统上运行测试、打包和启动检查。Mac 下载 DMG 后将 Folio 拖入 Applications；Linux 使用系统软件安装器安装 `.deb`，首轮验证平台为 Ubuntu 22.04 x64。未公证 Mac 测试包可能被 Gatekeeper 拦截，当前未承诺普通用户无提示安装。Windows 继续提供安装向导。
 
 历史升级计划与当时记录的 ChatGPT OAuth 接入条件见 [UPGRADE_PLAN.md](docs/history/UPGRADE_PLAN.md)。文档导航见 [docs/README.md](docs/README.md)。
+
+## 文献管理（beta.9 r4）
+
+阅读侧栏的笔记、计数和导出只对应当前文件；全局笔记按来源文件分组。左侧「我的分类」支持子分类和多个归属，父分类会包含子分类文献。分类与磁盘目录分开；删除分类不删除文件或笔记。
+
+选择文献后点击「资料」编辑标题、作者、年份、DOI、标签和阅读状态。可将独立文件明确加入同一条目作为正文、补充材料或版本文件，选择主文件，或将附件独立列出。条目的笔记入口聚合各附件笔记，引用仍保留各自文件和页码。标签可以与未读／阅读中／已读／未分类／有笔记筛选组合使用。元数据为手工编辑，不根据同名文件推断同一篇论文。
+
+新增组织信息存入 `folio-library-items` 和 `folio-collections`，纳入工作区备份；不会重写原文或旧笔记来源。UI 回归：以 Electron 运行 `scripts/test-note-organization.cjs`，使用独立测试配置，不读取用户数据。

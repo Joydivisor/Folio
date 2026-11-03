@@ -3,7 +3,8 @@ import {DISPLAY_KINDS,parseDisplayPlan} from './display-plan.js';
 import {parseUnderstanding} from './understanding.js';
 import {validatePermutationSnapshot} from './permutation-state.js';
 import {parseGraph} from './graph-schema.js';
-export const DATA_KEYS=['jianwei-notes','jianwei-positions','jianwei-favorites','jianwei-recent','folio-annotations','folio-remember-conversations','folio-display','folio-hidden-documents'];
+import {validateCollections,validateItems} from './library-organization.js';
+export const DATA_KEYS=['jianwei-notes','jianwei-positions','jianwei-favorites','jianwei-recent','folio-annotations','folio-remember-conversations','folio-display','folio-hidden-documents','folio-collections','folio-library-items'];
 export const TABLES=['state','documents','pages','artifacts','imports','regions'];
 function validateTree(value,depth=0){
  if(depth>40)throw Error('Backup nesting is too deep');
@@ -33,6 +34,8 @@ export function validateBackup(value){
  for(const r of out.regions){validateSource(r.source);if(!imageSafe(r.image))throw Error('Invalid region image');}
  for(const i of out.imports)if(!Array.isArray(i.items)||!Array.isArray(i.collections))throw Error('Invalid import record');
  for(const r of out.state){if(['jianwei-notes','folio-annotations'].includes(r.id)&&!Array.isArray(r.value))throw Error('Invalid note collection');if(r.id==='jianwei-notes')for(const n of r.value){if(typeof n.id!=='string')throw Error('Invalid note');if(n.source)validateSource(n.source);if(n.artifact?.kind==='folio-artifact')validateArtifact(n.artifact.record);}}
+ for(const row of out.state)if(row.id==='folio-collections')validateCollections(row.value);
+ for(const row of out.state)if(row.id==='folio-library-items')validateItems(row.value);
  return out;
 }
 export async function checksum(value){const bytes=new TextEncoder().encode(JSON.stringify(value));return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');}

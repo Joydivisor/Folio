@@ -17,7 +17,7 @@ export function makeServer({fetchImpl = fetch, port = defaultPort, sessionKey = 
   try {
    if (![ `127.0.0.1:${port}`, `localhost:${port}` ].includes(req.headers.host)) return json(res,403,{error:'无效的本地主机地址'});
    const pathname = new URL(req.url, origin).pathname;
-   if(pathname==='/api/version'&&req.method==='GET')return json(res,200,{version:JSON.parse(await readFile(path.join(root,'package.json'),'utf8')).version,platform:process.platform,arch:process.arch});
+   if(pathname==='/api/version'&&req.method==='GET'){const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'));return json(res,200,{version:pkg.version,revision:pkg.folioRevision||'r0',platform:process.platform,arch:process.arch});}
    if(pathname==='/api/release'&&req.method==='GET'){const response=await fetchImpl('https://getfolio.pages.dev/release.json',{signal:AbortSignal.timeout(15000),redirect:'error'});if(!response.ok)return json(res,502,{error:'Release server unavailable'});return json(res,200,validateRelease(await response.json()));}
    if(pathname==='/api/status'&&req.method==='GET')return json(res,200,{configured:Boolean(sessionKey)});
    if (['/api/chat','/api/models'].includes(pathname) && req.method === 'POST') {

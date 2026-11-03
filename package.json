@@ -33,5 +33,6 @@
     "fake-indexeddb": "6.2.7"
   },
   "productName": "Folio",
-  "private": true
+  "private": true,
+  "folioRevision": "r4"
 }

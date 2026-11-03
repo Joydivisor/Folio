@@ -5,7 +5,7 @@ import {icon} from './icons.js';
 const $=id=>document.getElementById(id);
 const pref=(key,fallback)=>{try{return JSON.parse(localStorage.getItem('folio-'+key))??fallback;}catch{return fallback;}};
 const store=(key,value)=>{try{localStorage.setItem('folio-'+key,JSON.stringify(value));}catch{}};
-export function setupShell({selection,fit,closeDocument,hasDocument}){
+export function setupShell({selection,fit,closeDocument,hasDocument,exportAllNotes}){
  setupFeatureGuide();
  let opener=null,currentMenu=-1,returnFocus=null;
  const dialog=$('settingsDialog'),oldOpen=$('settingsButton').onclick;
@@ -32,7 +32,7 @@ export function setupShell({selection,fit,closeDocument,hasDocument}){
  reference(pref('reference-default',true));$('includePage').onchange=$('referenceDefault').onchange=e=>reference(e.target.checked);
  $('memorySetting').onchange=e=>{$('autoRemember').checked=e.target.checked;$('autoRemember').dispatchEvent(new Event('change'));};
  $('autoRemember').addEventListener('change',()=>$('memorySetting').checked=$('autoRemember').checked);
- $('settingsFolder').onclick=()=>{dialog.close();$('chooseFolder').click();};$('settingsExport').onclick=()=>$('exportNotes').click();
+ $('settingsFolder').onclick=()=>{dialog.close();$('chooseFolder').click();};$('settingsExport').onclick=exportAllNotes;
  $('fitWidth').onclick=fit;
  const palette=$('annotationColors');palette.popover='auto';palette.classList.add('palette-popover');document.body.append(palette);
  $('annotationColorMenu').setAttribute('aria-controls','annotationColors');
@@ -78,7 +78,8 @@ export function setupShell({selection,fit,closeDocument,hasDocument}){
  async function execute(id){
   const item=menus.flatMap(m=>m.items).find(i=>i?.[0]===id);if(!item||!commandEnabled(item,context()))return;
   if(['navigation','ocr','backup','restore','zotero','updates','artifacts','rollback'].includes(id)){window.dispatchEvent(new CustomEvent('folio-feature',{detail:id}));return;}
-  const targets={import:'importFiles',folder:'chooseFolder',library:'libraryButton',notes:'globalNotesButton',export:'exportNotes','ai-panel':'toggleAI',annotations:'toggleAnnotations',focus:'focusCanvas','zoom-in':'zoomIn','zoom-out':'zoomOut',explore:'citeSelection',compile:'compileAnnotations'};
+  if(id==='export'){await exportAllNotes();return;}
+  const targets={import:'importFiles',folder:'chooseFolder',library:'libraryButton',notes:'globalNotesButton','ai-panel':'toggleAI',annotations:'toggleAnnotations',focus:'focusCanvas','zoom-in':'zoomIn','zoom-out':'zoomOut',explore:'citeSelection',compile:'compileAnnotations'};
   if(targets[id]){$(targets[id]).click();return;}
   if(['settings','appearance','ai-settings'].includes(id)){settings(id==='settings'?'general':id==='appearance'?'appearance':'ai');return;}
   if(id==='fit'){fit();return;}if(id==='close'){closeDocument();return;}
