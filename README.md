@@ -11,7 +11,7 @@ Folio 将文献阅读与 AI 解释放在同一工作区。文献、批注、笔�
 | 平台 | 安装包 | 安装方式 |
 | --- | --- | --- |
 | Windows 10 / 11 · x64 | [EXE](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-Setup-1.0.0-win-x64.exe) · [ZIP](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-Setup-1.0.0-win-x64.zip) | 运行安装程序，选择安装位置和桌面快捷方式；ZIP 需先解压。 |
-| macOS 13+ · Apple Silicon | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-1.0.0-mac-arm64.dmg) | 打开后将 Folio 拖入 Applications。 |
+| macOS 13+ · Apple Silicon | 待补 / Pending | 当前正式版尚无此架构安装包；待 GitHub 执行机可用后补充。 |
 | macOS 13+ · Intel | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-1.0.0-mac-x64.dmg) | 打开后将 Folio 拖入 Applications。 |
 | Ubuntu 22.04 · x64 | [DEB](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-1.0.0-linux-x64.deb) | 使用系统软件安装器，或运行下面的命令。 |
 
