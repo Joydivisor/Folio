@@ -2,6 +2,12 @@ name: Build macOS and Linux
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: Platform to build
+        required: true
+        default: all
+        type: choice
+        options: [all, mac-arm64, mac-x64, linux-x64]
       release_tag:
         description: Existing draft release to receive verified packages (leave empty to build only)
         required: false
@@ -14,13 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-26
-            artifact: mac-arm64
-          - os: macos-15-intel
-            artifact: mac-x64
-          - os: ubuntu-22.04
-            artifact: linux-x64
+        include: ${{ fromJSON(inputs.platform == 'mac-arm64' && '[{"os":"macos-26","artifact":"mac-arm64"}]' || inputs.platform == 'mac-x64' && '[{"os":"macos-15-intel","artifact":"mac-x64"}]' || inputs.platform == 'linux-x64' && '[{"os":"ubuntu-22.04","artifact":"linux-x64"}]' || '[{"os":"macos-26","artifact":"mac-arm64"},{"os":"macos-15-intel","artifact":"mac-x64"},{"os":"ubuntu-22.04","artifact":"linux-x64"}]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
           shopt -s nullglob
           packages=(releases/*.dmg releases/*.deb)
           test "${#packages[@]}" -eq 1
-          gh release upload "$FOLIO_RELEASE_TAG" "${packages[@]}" --repo "$GITHUB_REPOSITORY"
+          gh release upload "$FOLIO_RELEASE_TAG" "${packages[@]}" --repo "$GITHUB_REPOSITORY" --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
