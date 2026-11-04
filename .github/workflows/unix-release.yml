@@ -1,8 +1,13 @@
 name: Build macOS and Linux
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release to receive verified packages (leave empty to build only)
+        required: false
+        type: string
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     timeout-minutes: 25
@@ -10,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15
+          - os: macos-26
             artifact: mac-arm64
           - os: macos-15-intel
             artifact: mac-x64
@@ -42,6 +47,19 @@ jobs:
           FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a node scripts/test-library-restart.cjs
           sudo apt-get remove -y folio
           test ! -e /opt/Folio/Folio
+      - name: Upload verified packages to the release draft
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FOLIO_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          test "$FOLIO_RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
+          test "$(gh release view "$FOLIO_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
+          shopt -s nullglob
+          packages=(releases/*.dmg releases/*.deb)
+          test "${#packages[@]}" -eq 1
+          gh release upload "$FOLIO_RELEASE_TAG" "${packages[@]}" --repo "$GITHUB_REPOSITORY"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
