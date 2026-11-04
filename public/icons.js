@@ -24,6 +24,7 @@ const paths={
  refresh:'<path d="M20 8a8 8 0 1 0 0 8M20 3v5h-5"/>',
  close:'<path d="m6 6 12 12M6 18 18 6"/>',
  canvas:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="m8 16 1-3 6-6 2 2-6 6-3 1Zm5-7 2 2"/>',
+ edit:'<path d="m4 16 10-10 4 4L8 20H4v-4Zm8-8 4 4m-1-7 2-2 4 4-2 2M13 20h8"/>',
  sidebar:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>',
  note:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6ZM8 10h3M8 14h8M8 18h5"/>',
  link:'<path d="m10 13 4-4M8 15l-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0m2 8a3 3 0 0 0 4 0l5-5a3 3 0 0 0-4-4l-2 2"/>',

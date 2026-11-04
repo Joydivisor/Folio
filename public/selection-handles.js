@@ -1,4 +1,6 @@
 import {ui} from './workspace-ui.js';
+// Loaded pages share endpoints so a native range can cross page boundaries.
+const pageTextRecords=new WeakMap();
 
 export function graphemeOffsets(text){
  const offsets=[...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(text)].map(s=>s.index);
@@ -17,28 +19,28 @@ export function mountSelectionHandles({layer,wrap,layout}){
  }
  const lens=document.createElement('div');lens.className='selection-loupe';lens.hidden=true;lens.setAttribute('aria-hidden','true');
  const preview=document.createElement('canvas');preview.width=392;preview.height=156;lens.append(preview);document.body.append(lens);wrap.append(controls);
- const records=[...layer.querySelectorAll('span[data-block]')].filter(el=>el.firstChild?.nodeType===3&&el.textContent.length).map((el,index)=>({el,node:el.firstChild,index,column:Number(el.dataset.column),offsets:graphemeOffsets(el.textContent)}));
- const byNode=new Map(records.map(r=>[r.node,r]));let drag=null,frame=0,scrollFrame=0,geometry=[],disposed=false;
+ const records=[...layer.querySelectorAll('span[data-block]')].filter(el=>el.firstChild?.nodeType===3&&el.textContent.length).map((el,index)=>({el,wrap,node:el.firstChild,index,column:Number(el.dataset.column),offsets:graphemeOffsets(el.textContent)}));
+ const byNode=new Map(records.map(r=>[r.node,r]));for(const r of records)pageTextRecords.set(r.node,r);let drag=null,frame=0,scrollFrame=0,geometry=[],disposed=false;
  const on=(target,type,fn,options={})=>target?.addEventListener(type,fn,{...options,signal});
  function measure(){const bounds=wrap.getBoundingClientRect();geometry=records.map(r=>{const b=r.el.getBoundingClientRect();return {...r,x:b.left-bounds.left,y:b.top-bounds.top,width:b.width,height:b.height};}).filter(r=>r.width>0&&r.height>0);}
  function position(record,offset){return {node:record.node,offset,record};}
  function endpoints(){
-  const s=getSelection();if(!s?.rangeCount||s.isCollapsed||!layer.contains(s.anchorNode)||!layer.contains(s.focusNode))return null;
-  const range=s.getRangeAt(0);let a=byNode.get(range.startContainer),b=byNode.get(range.endContainer);
+  const s=getSelection();if(!s?.rangeCount||s.isCollapsed||(!layer.contains(s.anchorNode)&&!layer.contains(s.focusNode)))return null;
+  const range=s.getRangeAt(0);let a=pageTextRecords.get(range.startContainer),b=pageTextRecords.get(range.endContainer);
   if(a&&b)return {start:position(a,range.startOffset),end:position(b,range.endOffset)};
   const selected=records.filter(r=>range.intersectsNode(r.node));if(!selected.length)return null;
   a=selected[0];b=selected.at(-1);return {start:position(a,0),end:position(b,b.node.length)};
  }
- function compare(a,b){return a.record.index-b.record.index||a.offset-b.offset;}
+ function compare(a,b){return a.node===b.node?a.offset-b.offset:a.node.compareDocumentPosition(b.node)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1;}
  function setRange(a,b){if(!a||!b)return;getSelection().setBaseAndExtent(a.node,a.offset,b.node,b.offset);schedule();}
  function caret(p){
   if(!p)return null;const range=document.createRange(),len=p.node.length;if(!len)return null;
   const offsets=p.record.offsets,at=offsets.findIndex(n=>n>=p.offset),start=p.offset===len?offsets.at(-2):p.offset,end=p.offset===len?len:(offsets[at+1]??len);
   range.setStart(p.node,start);range.setEnd(p.node,end);const rect=range.getBoundingClientRect(),rtl=getComputedStyle(p.record.el).direction==='rtl';
-  return {x:p.offset===len?(rtl?rect.left:rect.right):(rtl?rect.right:rect.left),y:rect.top+rect.height/2,top:rect.top,bottom:rect.bottom,height:rect.height};
+  return {wrap:p.record.wrap,x:p.offset===len?(rtl?rect.left:rect.right):(rtl?rect.right:rect.left),y:rect.top+rect.height/2,top:rect.top,bottom:rect.bottom,height:rect.height};
  }
  function hit(x,y,preferred){
-  if(!geometry.length)measure();const bounds=wrap.getBoundingClientRect(),px=x-bounds.left,py=y-bounds.top;
+  if(!geometry.length)measure();const bounds=wrap.getBoundingClientRect();if(y<bounds.top||y>bounds.bottom){const caret=document.caretPositionFromPoint?.(x,y),range=caret?null:document.caretRangeFromPoint?.(x,y),node=caret?.offsetNode||range?.startContainer,record=node&&pageTextRecords.get(node);if(record&&record.wrap!==wrap)return position(record,caret?.offset??range.startOffset);}const px=x-bounds.left,py=y-bounds.top;
   const gutters=(layout.gutters||[]).map(g=>g*bounds.width);let col=gutters.filter(g=>px>g).length;
   if(preferred!==undefined&&gutters.some(g=>Math.abs(px-g)<8))col=preferred;
   let candidates=geometry.filter(r=>r.column===col||r.column===-1&&py>=r.y-2&&py<=r.y+r.height+2);
@@ -53,7 +55,7 @@ export function mountSelectionHandles({layer,wrap,layout}){
   return Math.abs(caret(left).x-x)<=Math.abs(caret(right).x-x)?left:right;
  }
  function paintLoupe(p){
-  if(!drag||!p)return;lens.hidden=false;const paper=wrap.querySelector('canvas'),b=wrap.getBoundingClientRect(),v=viewport.getBoundingClientRect(),c=preview.getContext('2d');
+  if(!drag||!p)return;lens.hidden=false;const paper=(p.wrap||wrap).querySelector('canvas'),b=(p.wrap||wrap).getBoundingClientRect(),v=viewport.getBoundingClientRect(),c=preview.getContext('2d');
   const x=p.x-b.left,y=p.y-b.top,ratio=paper.width/b.width,zoom=2,sourceW=196/zoom,sourceH=78/zoom,sx=Math.max(0,Math.min(b.width-sourceW,x-sourceW/2)),sy=Math.max(0,Math.min(b.height-sourceH,y-sourceH/2));
   c.fillStyle='#fff';c.fillRect(0,0,392,156);c.drawImage(paper,sx*ratio,sy*ratio,sourceW*ratio,sourceH*ratio,0,0,392,156);
   const lineX=(x-sx)*zoom*2;c.strokeStyle='#4f83ce';c.lineWidth=3;c.beginPath();c.moveTo(lineX,Math.max(10,(p.top-b.top-sy)*zoom*2));c.lineTo(lineX,Math.min(146,(p.bottom-b.top-sy)*zoom*2));c.stroke();
@@ -63,7 +65,7 @@ export function mountSelectionHandles({layer,wrap,layout}){
  function paint(){
   frame=0;if(disposed||!wrap.isConnected)return;const ends=endpoints(),bounds=wrap.getBoundingClientRect(),v=viewport.getBoundingClientRect();
   for(const edge of ['start','end']){
-   const b=handles[edge],p=ends&&caret(ends[edge]);b.hidden=!p||p.bottom<v.top||p.top>v.bottom||p.x<v.left||p.x>v.right;
+   const b=handles[edge],p=ends&&ends[edge].record.wrap===wrap?caret(ends[edge]):null;b.hidden=!p||p.bottom<v.top||p.top>v.bottom||p.x<v.left||p.x>v.right;
    if(!p)continue;Object.assign(b.style,{left:p.x-bounds.left-22+'px',top:(edge==='start'?p.top-28:p.bottom-6)-bounds.top+'px'});
    b.classList.toggle('is-adjusting',drag?.kind==='handle'&&drag.moving===edge);
   }
@@ -89,13 +91,13 @@ export function mountSelectionHandles({layer,wrap,layout}){
   if(!drag||e.pointerId!==drag.pointerId)return;const current=drag;drag=null;cancelAnimationFrame(scrollFrame);viewport.classList.remove('reader-selecting');lens.hidden=true;
   if(current.owner.hasPointerCapture(e.pointerId))current.owner.releasePointerCapture(e.pointerId);schedule();
  }
- function inSelection(x,y){const s=getSelection();return s?.rangeCount&&!s.isCollapsed&&layer.contains(s.anchorNode)&&[...s.getRangeAt(0).getClientRects()].some(r=>r.width>0&&r.height>0&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom);}
+ function inSelection(x,y){const s=getSelection();return s?.rangeCount&&!s.isCollapsed&&s.getRangeAt(0).intersectsNode(layer)&&[...s.getRangeAt(0).getClientRects()].some(r=>r.width>0&&r.height>0&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom);}
  on(layer,'pointerdown',e=>{
   if(e.button!==0||e.ctrlKey||e.metaKey||e.altKey||e.detail>1||inSelection(e.clientX,e.clientY))return;
   measure();const p=hit(e.clientX,e.clientY);if(!p)return;
   // A blank margin click dismisses the existing selection instead of snapping to text.
   const b=p.record.el.getBoundingClientRect();if(e.clientX<b.left-8||e.clientX>b.right+8||e.clientY<b.top-8||e.clientY>b.bottom+8){getSelection()?.removeAllRanges();return;}
-  const s=getSelection(),anchor=e.shiftKey&&byNode.has(s?.anchorNode)?position(byNode.get(s.anchorNode),s.anchorOffset):p;
+  const s=getSelection(),anchor=e.shiftKey&&pageTextRecords.has(s?.anchorNode)?position(pageTextRecords.get(s.anchorNode),s.anchorOffset):p;
   setRange(anchor,p);begin(e,{kind:'text',fixed:anchor,point:p,dx:0,dy:0},layer);
  });
  for(const [edge,b]of Object.entries(handles)){
@@ -114,5 +116,5 @@ export function mountSelectionHandles({layer,wrap,layout}){
  on(document,'keydown',e=>{if(e.key==='Escape'&&drag){finish({pointerId:drag.pointerId});getSelection()?.removeAllRanges();}});
  on(window,'folio-language',()=>{for(const [edge,b]of Object.entries(handles)){b.setAttribute('aria-label',edge==='start'?ui('调整选区起点','Adjust selection start'):ui('调整选区终点','Adjust selection end'));b.title=ui('拖动调整，方向键微调','Drag to adjust; arrow keys to fine-tune');}});
  measure();schedule();
- return {destroy(){disposed=true;abort.abort();cancelAnimationFrame(frame);cancelAnimationFrame(scrollFrame);if(drag?.owner.hasPointerCapture(drag.pointerId))drag.owner.releasePointerCapture(drag.pointerId);drag=null;viewport.classList.remove('reader-selecting');controls.remove();lens.remove();}};
+ return {destroy(){for(const r of records)pageTextRecords.delete(r.node);disposed=true;abort.abort();cancelAnimationFrame(frame);cancelAnimationFrame(scrollFrame);if(drag?.owner.hasPointerCapture(drag.pointerId))drag.owner.releasePointerCapture(drag.pointerId);drag=null;viewport.classList.remove('reader-selecting');controls.remove();lens.remove();}};
 }

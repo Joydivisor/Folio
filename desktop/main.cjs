@@ -59,6 +59,7 @@ async function start() {
     },
   });
   const send = command => mainWindow?.webContents.send('folio:command', command);
+  const finishLibraryRestore = require('./file-permissions.cjs').installFilePermissions(mainWindow.webContents.session, {origin: ORIGIN, getWebContents: () => mainWindow?.webContents});
   const {menus} = await import(pathToFileURL(path.join(__dirname, '../public/commands.js')).href);
   const {menuTemplate} = require('./menu.cjs');
   const refreshMenu = language => {
@@ -84,6 +85,7 @@ async function start() {
     return fn(data);
   });
   handle('folio:open-download', async value=>{const {validateRelease}=await import('../public/release-info.js');const response=await fetch('https://getfolio.pages.dev/release.json',{signal:AbortSignal.timeout(15000),redirect:'error'});if(!response.ok)throw Error('Release server unavailable');const release=validateRelease(await response.json());if(!release.downloads.some(d=>d.url===value))throw Error('Unrecognized download');await shell.openExternal(value);});
+  handle('folio:library-restored', () => finishLibraryRestore());
   handle('folio:language', value => {
     if(!['zh-CN','en'].includes(value))throw new Error('Invalid language');
     refreshMenu(value);

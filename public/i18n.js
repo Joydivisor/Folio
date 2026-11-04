@@ -1,5 +1,12 @@
 // Interface strings only. Documents, answers, quotes and authored notes are never translated.
 export const dictionary = Object.fromEntries(`
+连续滚动|Continuous scroll
+逐页阅读|Page by page
+阅读方式|Reading mode
+整篇文献连续向下阅读|Scroll through the whole document
+一次显示一页，使用左右按钮翻页|Read one page at a time with the page buttons
+Workspace ID（可选）|Workspace ID (optional)
+仅非工作区限定的 Claude 密钥需要|Only for a multi-workspace Claude key
 资料|Details
 标签筛选|Filter by tag
 文献筛选|Filter documents

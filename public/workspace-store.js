@@ -4,7 +4,7 @@ import {parseUnderstanding} from './understanding.js';
 import {validatePermutationSnapshot} from './permutation-state.js';
 import {parseGraph} from './graph-schema.js';
 import {validateCollections,validateItems} from './library-organization.js';
-export const DATA_KEYS=['jianwei-notes','jianwei-positions','jianwei-favorites','jianwei-recent','folio-annotations','folio-remember-conversations','folio-display','folio-hidden-documents','folio-collections','folio-library-items'];
+export const DATA_KEYS=['jianwei-notes','jianwei-positions','jianwei-favorites','jianwei-recent','folio-annotations','folio-remember-conversations','folio-display','folio-reading-mode','folio-reader-offsets','folio-hidden-documents','folio-collections','folio-library-items'];
 export const TABLES=['state','documents','pages','artifacts','imports','regions'];
 function validateTree(value,depth=0){
  if(depth>40)throw Error('Backup nesting is too deep');
@@ -15,7 +15,7 @@ function validateTree(value,depth=0){
 }
 const imageSafe=value=>typeof value==='string'&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
 function validateSource(s){if(!s||typeof s!=='object')throw Error('Invalid source');if(s.page!==undefined&&(!Number.isInteger(s.page)||s.page<1))throw Error('Invalid source page');if(s.rect&&(!Array.isArray(s.rect)||s.rect.length!==4||!s.rect.every(n=>Number.isFinite(n)&&n>=0&&n<=1)||s.rect[0]+s.rect[2]>1.00001||s.rect[1]+s.rect[3]>1.00001))throw Error('Invalid source rectangle');}
-function validateArtifact(a){if(!a||typeof a.id!=='string'||!Array.isArray(a.versions)||!a.versions.length||a.versions.length>1000||!Number.isInteger(a.cursor)||!a.versions[a.cursor])throw Error('Invalid artifact history');validateSource(a.source);const ids=new Set();for(const v of a.versions){if(typeof v.id!=='string'||ids.has(v.id)||!v.plan||typeof v.plan.kind!=='string'||!v.answer||typeof v.answer!=='object')throw Error('Invalid artifact version');ids.add(v.id);
+function validateArtifact(a){if(!a||typeof a.id!=='string'||!Array.isArray(a.versions)||!a.versions.length||a.versions.length>1000||!Number.isInteger(a.cursor)||!a.versions[a.cursor])throw Error('Invalid artifact history');validateSource(a.source);if(a.discussions&&(!Array.isArray(a.discussions)||a.discussions.length>100||a.discussions.some(d=>typeof d.id!=='string'||typeof d.question!=='string'||!Array.isArray(d.answer?.paragraphs)||d.answer.paragraphs.length>20||d.answer.paragraphs.some(p=>typeof p.text!=='string'||!Array.isArray(p.sources)))))throw Error('Invalid artifact discussion');const ids=new Set();for(const v of a.versions){if(typeof v.id!=='string'||ids.has(v.id)||!v.plan||typeof v.plan.kind!=='string'||!v.answer||typeof v.answer!=='object')throw Error('Invalid artifact version');ids.add(v.id);
  const p=v.plan;if(DISPLAY_KINDS.includes(p.kind))parseDisplayPlan(p);else parseUnderstanding(JSON.stringify({...p,...(p.kind==='permutation'?{sigma:p.sigma?.map(n=>n+1),tau:p.tau?.map(n=>n+1)}:{})}));
  if(!Array.isArray(v.answer.paragraphs)||v.answer.paragraphs.length>20||v.answer.paragraphs.some(p=>typeof p.text!=='string'||!Array.isArray(p.sources)))throw Error('Invalid artifact answer');
  if(v.interaction?.kind==='permutation-state')validatePermutationSnapshot(v.interaction);

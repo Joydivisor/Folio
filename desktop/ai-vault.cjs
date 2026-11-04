@@ -43,7 +43,7 @@ function createVault(directory,crypto){
    records.set(url,{key:next,persisted:Boolean(remember&&next)});return status(url);
   });},
   forget(address=DEFAULT){return serialize(async()=>{const url=endpoint(address);await fs.rm(file(url),{force:true});if(url===DEFAULT)await fs.rm(legacy,{force:true});records.delete(url);return status(url);});},
-  config(config){const url=endpoint(config.baseUrl);return {baseUrl:url,model:String(config.model||'').slice(0,200),thinking:Boolean(config.thinking),answerLanguage:['en','zh-CN'].includes(config.answerLanguage)?config.answerLanguage:'auto',...(config.responseFormat==='json'?{responseFormat:'json'}:{}),apiKey:record(url).key};},
+  config(config){const url=endpoint(config.baseUrl);return {baseUrl:url,model:String(config.model||'').slice(0,200),thinking:Boolean(config.thinking),workspaceId:String(config.workspaceId||'').slice(0,200),maxTokens:Math.max(256,Math.min(16384,Math.trunc(Number(config.maxTokens)||4096))),answerLanguage:['en','zh-CN'].includes(config.answerLanguage)?config.answerLanguage:'auto',...(config.responseFormat==='json'?{responseFormat:'json'}:{}),apiKey:record(url).key};},
  };
 }
 module.exports={createVault,officialEndpoint,endpoint};

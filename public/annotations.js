@@ -5,18 +5,26 @@ export function setupAnnotations({getDocument,getPage,getMode=()=>'original',goP
   let color='yellow',selection=null,root=null,observer=null,frame=0,activeId=null,deleted=null;
   const persist=()=>save('folio-annotations',store);
   const current=()=>store.filter(a=>a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision)).sort((a,b)=>a.page-b.page||a.created-b.created);
-  function textRoot(){return $('documentContent').querySelector('.textLayer,.paper');}
+  function pageRoot(number){return $('documentContent').querySelector('[data-page="'+number+'"]');}
+  function textRoot(number=getPage()){return pageRoot(number)?.querySelector('.textLayer,.paper')||null;}
   function capture(){
-    const s=getSelection(),target=textRoot();
-    if(!target||!s?.rangeCount||s.isCollapsed||!target.contains(s.anchorNode)||!target.contains(s.focusNode)){selection=null;return;}
-    const range=s.getRangeAt(0),prefix=range.cloneRange();prefix.selectNodeContents(target);prefix.setEnd(range.startContainer,range.startOffset);
-    const text=target.textContent,start=prefix.toString().length,exact=range.toString();
-    if(!exact.trim()||exact.length>16000)return;
-    selection={documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,page:getPage(),displayText:s.toString(),anchor:{start,end:start+exact.length,exact,prefix:text.slice(Math.max(0,start-32),start),suffix:text.slice(start+exact.length,start+exact.length+32)}};
+    const s=getSelection();if(!s?.rangeCount||s.isCollapsed||!$('documentContent').contains(s.anchorNode)||!$('documentContent').contains(s.focusNode)){selection=null;return;}
+    const original=s.getRangeAt(0),segments=[];
+    for(const target of $('documentContent').querySelectorAll('.textLayer,.paper')){
+      if(!original.intersectsNode(target))continue;
+      const range=document.createRange();range.selectNodeContents(target);
+      if(target.contains(original.startContainer))range.setStart(original.startContainer,original.startOffset);
+      if(target.contains(original.endContainer))range.setEnd(original.endContainer,original.endOffset);
+      const exact=range.toString();if(!exact.trim()||exact.length>16000)continue;
+      const prefix=range.cloneRange();prefix.selectNodeContents(target);prefix.setEnd(range.startContainer,range.startOffset);
+      const text=target.textContent,start=prefix.toString().length;
+      segments.push({page:Number(target.closest('[data-page]')?.dataset.page)||getPage(),displayText:exact,anchor:{start,end:start+exact.length,exact,prefix:text.slice(Math.max(0,start-32),start),suffix:text.slice(start+exact.length,start+exact.length+32)}});
+    }
+    selection=segments.length?{documentId:getDocument().id,segments}:null;
   }
   document.addEventListener('selectionchange',capture);
-  function makeRange(anchor){
-    const target=textRoot();if(!target)return null;
+  function makeRange(anchor,number=getPage()){
+    const target=textRoot(number);if(!target)return null;
     const match=resolveAnchor(target.textContent,anchor);if(!match)return null;
     const walker=document.createTreeWalker(target,NodeFilter.SHOW_TEXT),range=document.createRange();let offset=0,startSet=false,node;
     while((node=walker.nextNode())){const next=offset+node.length;if(!startSet&&match.start<next){range.setStart(node,match.start-offset);startSet=true;}if(startSet&&match.end<=next){range.setEnd(node,match.end-offset);return range;}offset=next;}
@@ -24,11 +32,13 @@ export function setupAnnotations({getDocument,getPage,getMode=()=>'original',goP
   }
   function paint(){
     cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{
-      if(!root?.isConnected)return;root.querySelector('.annotation-layer')?.remove();
-      const layer=document.createElement('div');layer.className='annotation-layer';layer.setAttribute('aria-hidden','true');
-      const bounds=root.getBoundingClientRect();
-      for(const a of current().filter(a=>a.page===getPage()&&a.anchor)){
-        const range=makeRange(a.anchor);if(!range)continue;
+      if(!root?.isConnected)return;root.querySelectorAll('.annotation-layer').forEach(el=>el.remove());
+      const layers=new Map();
+      for(const a of current().filter(a=>a.anchor)){
+        const page=pageRoot(a.page);if(!page?.querySelector('.textLayer,.paper'))continue;
+        const range=makeRange(a.anchor,a.page);if(!range)continue;
+        let layer=layers.get(page);if(!layer){layer=document.createElement('div');layer.className='annotation-layer';layer.setAttribute('aria-hidden','true');layers.set(page,layer);}
+        const bounds=page.getBoundingClientRect();
         const seen=new Set();for(const rect of range.getClientRects()){
           const rectKey=[rect.left,rect.top,rect.width,rect.height].map(n=>Math.round(n*10)).join(',');if(seen.has(rectKey))continue;seen.add(rectKey);
           if(rect.width<1||rect.height<1)continue;
@@ -36,14 +46,14 @@ export function setupAnnotations({getDocument,getPage,getMode=()=>'original',goP
           Object.assign(mark.style,{left:(rect.left-bounds.left)+'px',top:(rect.top-bounds.top)+'px',width:rect.width+'px',height:rect.height+'px'});mark.style.setProperty('--annotation-color',colors[a.color]||colors.yellow);layer.append(mark);
         }
       }
-      root.append(layer);
+      for(const [page,layer]of layers)page.append(layer);
     });
   }
   function showPanel(open=true){$('annotationPanel').hidden=!open;$('toggleAnnotations').setAttribute('aria-expanded',String(open));if(open)renderList();}
   async function reveal(a){
     activeId=a.id;
-    if(a.page!==getPage())await goPage(a.page,a.view||'original');
-    paint();const range=a.anchor&&makeRange(a.anchor);
+    await goPage(a.page,{keepConversation:true});
+    paint();const range=a.anchor&&makeRange(a.anchor,a.page);
     if(a.anchor&&!range)toast('原文位置已变化，暂时无法精确定位；已打开对应页。');
     if(range){const rect=range.getBoundingClientRect(),vp=$('readerViewport');vp.scrollTop+=rect.top-vp.getBoundingClientRect().top-80;}
     renderList();
@@ -69,13 +79,15 @@ export function setupAnnotations({getDocument,getPage,getMode=()=>'original',goP
     $('compileAnnotations').disabled=!all.length;
   }
   function create(type){
-    capture();const valid=selection?.documentId===getDocument().id&&selection.page===getPage();
+    capture();const valid=selection?.documentId===getDocument().id;
     if(!valid&&type!=='note'){toast('先选中需要标记的原文。');return;}
-    const anchor=valid?selection.anchor:null;
-    const existing=store.find(a=>a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision)&&a.page===getPage()&&a.type===type&&a.anchor&&a.anchor.start===anchor?.start&&a.anchor.end===anchor?.end);
-    if(existing){activeId=existing.id;showPanel();paint();return;}
-    const a={id:crypto.randomUUID(),documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,documentName:getDocument().name,page:getPage(),view:getMode(),type,color,anchor,text:valid?(selection.displayText||anchor.exact):'',comment:'',created:Date.now()};
-    store.push(a);activeId=a.id;persist();selection=null;getSelection()?.removeAllRanges();showPanel();paint();
+    const segments=valid?selection.segments:[{page:getPage(),anchor:null,displayText:''}];
+    for(const item of segments){
+      const existing=item.anchor&&store.find(a=>a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision)&&a.page===item.page&&a.type===type&&a.anchor?.start===item.anchor.start&&a.anchor?.end===item.anchor.end);
+      if(existing){activeId=existing.id;continue;}
+      const a={id:crypto.randomUUID(),documentId:getDocument().id,canonicalId:getDocument().documentId,revision:getDocument().revision,documentName:getDocument().name,page:item.page,view:getMode(),type,color,anchor:item.anchor,text:item.displayText,comment:'',created:Date.now()};store.push(a);activeId=a.id;
+    }
+    persist();selection=null;getSelection()?.removeAllRanges();showPanel();paint();
     [...$('annotationList').querySelectorAll('.annotation-card')].find(el=>el.classList.contains('active'))?.querySelector('textarea')?.focus();
   }
   for(const [id,type]of [['highlightSelection','highlight'],['underlineSelection','underline'],['addPageNote','note']]){$(id).onmousedown=e=>e.preventDefault();$(id).onclick=()=>create(type);}
@@ -90,7 +102,7 @@ export function setupAnnotations({getDocument,getPage,getMode=()=>'original',goP
     for(const mark of $('documentContent').querySelectorAll('.annotation-mark')){const r=mark.getBoundingClientRect();if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){activeId=mark.dataset.annotation;showPanel();paint();break;}}
   });
   return {
-    mount(){selection=null;observer?.disconnect();root=$('documentContent').querySelector('.pdf-page,.paper');if(root){observer=new ResizeObserver(paint);observer.observe(root);paint();}renderList();},
+    mount(){observer?.disconnect();root=$('documentContent');if(root){observer=new ResizeObserver(paint);observer.observe(root);paint();}renderList();},
     async revealId(id){const a=store.find(a=>a.id===id&&a.documentId===getDocument().id&&(!a.revision||a.revision===getDocument().revision));if(a){showPanel();await reveal(a);}},
   };
 }

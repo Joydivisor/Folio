@@ -5,7 +5,7 @@ export function wrapDiagramText(text, maxUnits=16){
  if(line)lines.push(line);return lines.length?lines:[''];
 }
 export async function layoutConcept(data,engine){
- const nodes=data.nodes.map((n,i)=>{const lines=wrapDiagramText(n.label,12);return {id:n.id,width:184,height:Math.max(64,lines.length*20+26),lines,index:i};});
+ const nodes=data.nodes.map((n,i)=>{const lines=wrapDiagramText(n.label,12);return {id:n.id,width:n.type==='decision'?220:184,height:Math.max(n.type==='decision'?100:64,lines.length*20+(n.type==='decision'?60:26)),lines,index:i,layoutOptions:n.type==='start'?{'elk.layered.layering.layerConstraint':'FIRST_SEPARATE'}:n.type==='end'?{'elk.layered.layering.layerConstraint':'LAST_SEPARATE'}:{}};});
  const edges=data.edges.map((e,i)=>{
   const lines=wrapDiagramText(e.label,12),units=line=>[...line].reduce((sum,c)=>sum+(/[\u0000-\u00ff]/.test(c)?.6:1),0);
   return {id:'edge-'+i,sources:[e.from],targets:[e.to],labels:e.label?[{text:e.label,width:Math.max(...lines.map(units))*12+16,height:lines.length*18+10,lines,layoutOptions:{'elk.edgeLabels.placement':'CENTER'}}]:[]};

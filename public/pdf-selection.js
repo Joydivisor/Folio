@@ -17,6 +17,7 @@ export function assignTextBlocks(items,layout,viewport){
 }
 export function enhancePDFSelection({layer,textDivs,items,layout,viewport,wrap,onSelect}){
  if(viewport.rotation&&viewport.rotation%180!==0)return {destroy(){}};
+ const abort=new AbortController(),signal=abort.signal;
  const groups=assignTextBlocks(items.filter(i=>typeof i.str==='string'),layout,viewport),textItems=items.filter(i=>typeof i.str==='string'),nodes=[],seen=new Set();let anchor=0;
  for(const {block,indices} of groups){const group=document.createElement('span');group.className='markedContent semantic-block';group.dataset.block=block.id;group.dataset.column=block.column??0;
   for(const index of indices){const div=textDivs[index];if(!div)continue;seen.add(div);div.dataset.block=block.id;div.dataset.column=block.column??0;group.append(div);if(textItems[index].hasEOL)group.append(document.createElement('br'));}
@@ -26,9 +27,9 @@ export function enhancePDFSelection({layer,textDivs,items,layout,viewport,wrap,o
  layer.replaceChildren(...nodes);
  const pick=document.createElement('button');pick.type='button';pick.className='quick-paragraph';pick.textContent='¶';pick.hidden=true;pick.title=ui('选择整段 · Shift 连选','Select paragraph · Shift to extend');pick.setAttribute('aria-label',pick.title);wrap.append(pick);let current=0;
  function select(index,extend){const lo=extend?Math.min(anchor,index):index,hi=extend?Math.max(anchor,index):index;if(!extend)anchor=index;const first=nodes[lo],last=nodes[hi];if(!first||!last)return;const range=document.createRange();const a=first.querySelector('span')?.firstChild,b=[...last.querySelectorAll('span')].at(-1)?.firstChild;if(!a||!b)return;range.setStart(a,0);range.setEnd(b,b.length);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);onSelect(layout.blocks.slice(lo,hi+1));}
- wrap.addEventListener('pointermove',e=>{if(e.buttons)return;const block=e.target.closest?.('[data-block]');if(!block)return;current=layout.blocks.findIndex(b=>b.id===block.dataset.block);if(current<0)return;const r=layout.blocks[current].rect;pick.hidden=false;pick.style.left=Math.max(2,r[0]*wrap.clientWidth-29)+'px';pick.style.top=Math.max(2,r[1]*wrap.clientHeight)+'px';});
- wrap.addEventListener('pointerleave',()=>{pick.hidden=true;});pick.onmousedown=e=>e.preventDefault();pick.onclick=e=>select(current,e.shiftKey);
- layer.addEventListener('click',e=>{if(e.detail!==3)return;const id=e.target.closest?.('[data-block]')?.dataset.block,index=layout.blocks.findIndex(b=>b.id===id);if(index>=0){e.preventDefault();select(index,e.shiftKey);}});
+ wrap.addEventListener('pointermove',e=>{if(e.buttons)return;const block=e.target.closest?.('[data-block]');if(!block)return;current=layout.blocks.findIndex(b=>b.id===block.dataset.block);if(current<0)return;const r=layout.blocks[current].rect;pick.hidden=false;pick.style.left=Math.max(2,r[0]*wrap.clientWidth-29)+'px';pick.style.top=Math.max(2,r[1]*wrap.clientHeight)+'px';},{signal});
+ wrap.addEventListener('pointerleave',()=>{pick.hidden=true;},{signal});pick.onmousedown=e=>e.preventDefault();pick.onclick=e=>select(current,e.shiftKey);
+ layer.addEventListener('click',e=>{if(e.detail!==3)return;const id=e.target.closest?.('[data-block]')?.dataset.block,index=layout.blocks.findIndex(b=>b.id===id);if(index>=0){e.preventDefault();select(index,e.shiftKey);}},{signal});
  const controls=mountSelectionHandles({layer,wrap,layout});
- return {select,destroy(){controls.destroy();pick.remove();}};
+ return {select,destroy(){abort.abort();controls.destroy();pick.remove();}};
 }

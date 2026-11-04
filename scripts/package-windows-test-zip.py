@@ -22,7 +22,7 @@ def sha256_file(path):
 if sha256_file(installer) != expected:
     raise RuntimeError('Installer differs from the release checksum manifest.')
 
-readme = '''Folio beta.9 | Windows 内测安装说明
+readme = '''Folio beta.9 | Windows 安装说明
 适用：Windows 10 / 11，x64（64 位 Intel / AMD）
 
 1. 右键 ZIP，选择“全部解压缩”。
@@ -36,7 +36,7 @@ readme = '''Folio beta.9 | Windows 内测安装说明
 已有版本：先退出 Folio，再安装到原位置。已有本地文献库、笔记和设置
 会保留；重新安装不会清空之前的使用记录。
 
-这是未签名的内测版本，Windows 可能显示发布者或信誉提示。
+此 Windows 安装包尚未签名，Windows 可能显示发布者或信誉提示。
 请确认文件来自 Folio 开发者；无需关闭系统安全防护。
 
 包内不含开发者的 API Key、私人文献或测试账户数据。
@@ -59,7 +59,7 @@ in Settings, enter your own API key and select a model. Local reading does
 not require a key. Close Folio before updating at its existing location;
 your library, notes and settings are retained.
 
-This beta is unsigned, so Windows may display a publisher or reputation
+This Windows package is unsigned, so Windows may display a publisher or reputation
 warning. Verify that the package came from the Folio developer. You do not
 need to turn off security protection. No developer API keys, private
 documents or test profiles are included.

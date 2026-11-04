@@ -3,6 +3,7 @@ export const PROVIDERS = [
  {id:'deepseek',name:'DeepSeek',baseUrl:'https://api.deepseek.com',model:'deepseek-flash'},
  {id:'openai',name:'OpenAI',baseUrl:'https://api.openai.com/v1',model:''},
  {id:'gemini',name:'Google Gemini',baseUrl:'https://generativelanguage.googleapis.com/v1beta/openai',model:''},
+ {id:'anthropic',name:'Anthropic Claude',baseUrl:'https://api.anthropic.com/v1',model:''},
  {id:'custom',name:'自定义 · OpenAI 兼容',baseUrl:'',model:''},
 ];
 export function normalizeEndpoint(value){
@@ -22,5 +23,5 @@ export function modelOptions(value,baseUrl){
   if(provider==='openai'&&(!/^(gpt-|o\d|chatgpt-)/.test(m.id)||/image|audio|realtime|transcribe|tts|search|codex|deep-research/.test(m.id)))return false;
   if(provider==='gemini'&&(!m.id.includes('gemini')||/embedding|image|live|tts|robotics/.test(m.id)))return false;
   return true;
- }).slice(0,300).map(m=>({id:m.id,name:typeof m.name==='string'?m.name.slice(0,120):m.id})).sort((a,b)=>a.id.localeCompare(b.id));
+ }).slice(0,300).map(m=>({id:m.id,name:typeof (m.display_name||m.name)==='string'?(m.display_name||m.name).slice(0,120):m.id})).sort((a,b)=>a.id.localeCompare(b.id));
 }

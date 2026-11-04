@@ -1,7 +1,8 @@
-import {node,button,ui} from './workspace-ui.js';
-export function mountDisplay(host,plan,{saved={},onState=()=>{},renderMath=()=>{}}={}){
+import {node} from './workspace-ui.js';
+export function mountDisplay(host,plan,{renderMath=()=>{}}={}){
  const root=node('section',undefined,{className:'step-view'});root.append(node('h2',plan.object));host.append(root);
  if(plan.kind==='comparison'){const table=node('table',undefined,{className:'comparison-table'}),head=node('tr');for(const c of plan.columns)head.append(node('th',c));table.append(head);for(const row of plan.rows){const tr=node('tr');for(const cell of row)tr.append(node('td',cell));table.append(tr);}root.append(table);renderMath(root);return ()=>{};}
- let index=Math.max(0,Math.min(plan.steps.length-1,saved.step||0)),timer;const tabs=node('ol'),content=node('article'),controls=node('div',undefined,{className:'workspace-actions'});function stop(){clearInterval(timer);timer=null;}function draw(){const step=plan.steps[index];tabs.replaceChildren();for(const [i,s]of plan.steps.entries()){const li=node('li'),b=button(String(i+1),()=>{stop();index=i;draw();});b.setAttribute('aria-current',String(i===index));b.title=s.title;li.append(b);tabs.append(li);}content.replaceChildren(node('small',({source:ui('原文陈述','Source statement'),deduction:ui('推导说明 · AI','Reasoning · AI'),example:ui('辅助示例','Illustrative example')})[step.basis]),node('h3',step.title),node('p',step.text));renderMath(content);onState({step:index});}
- controls.append(button(ui('上一步','Previous'),()=>{stop();index=Math.max(0,index-1);draw();}),button(ui('下一步','Next'),()=>{stop();index=Math.min(plan.steps.length-1,index+1);draw();}),button(ui('播放 / 暂停','Play / pause'),()=>{if(timer){stop();return;}if(plan.steps.length<2)return;if(index===plan.steps.length-1)index=0;draw();timer=setInterval(()=>{index++;draw();if(index===plan.steps.length-1)stop();},1800);}));root.append(tabs,content,controls);draw();return stop;
+ const steps=node('ol',undefined,{className:'reading-steps'});
+ for(const step of plan.steps){const li=node('li');li.append(node('h3',step.title),node('p',step.text));steps.append(li);}
+ root.append(steps);renderMath(steps);return ()=>{};
 }

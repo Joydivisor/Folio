@@ -16,4 +16,4 @@ export function learningRequest(kind){
  if(!requests[kind])throw Error('Unknown learning action');
  return '请保留当前问题的对象与参数。'+requests[kind]+' 如果原文确实缺少演示参数，说明具体缺少什么，不要替换原文对象。';
 }
-export function hasPresentation(version){return ['permutation','derived','geometry','tetrahedron','comparison','derivation','process'].includes(version.plan.kind)||version.plan.kind==='concept'&&Boolean(version.visual);}
+export function hasPresentation(version){return ['permutation','derived','geometry','tetrahedron','comparison','derivation','process','diagram','anatomy','document'].includes(version.plan.kind)||version.plan.kind==='concept'&&Boolean(version.visual);}

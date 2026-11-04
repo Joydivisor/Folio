@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0 · 2026-11-05
+
+- First stable, public source release under GPL-3.0-only, with Windows, macOS and Linux packages.
+- Restore connected document folders automatically on application restart. Persist a folder-bound catalog so unavailable disks or renewed browser permissions do not erase the visible library. Preserve explicit import write permission.
+- Default to continuous reading with saved page offsets and on-demand distant pages; retain paged mode.
+- Put answers in an editable canvas with contextual diagrams, complete derivations, comparisons and mixed text/visuals. Add local edits, history, snapshots and undo/redo.
+- Add model-independent Anatomy SVG illustrations, parameter controls, more geometry primitives and bounded custom meshes; support Claude Messages and OpenAI-compatible interfaces.
+- Unify search fields, menus, dialogs and sliding segmented controls across Chinese/English and light/dark themes. Remove playback controls from fully displayed derivations.
+- Retain source-linked notes, nested collections, document attachments, PDF selection, backups and local credential storage.
+
+Windows remains unsigned; macOS is ad-hoc signed and not Apple-notarized. AI calls require the user's own provider and key. Rendering and mathematical schema checks do not establish the correctness of arbitrary model explanations.
+
 ## 1.0.0-beta.9 · library update 2026-11-03 (r4)
 
 - Isolate reader notes, counts and exports by document identity; group global notes by source, including unlinked and unavailable originals. Preserve old note URLs and source navigation.

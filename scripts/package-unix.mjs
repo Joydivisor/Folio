@@ -16,10 +16,10 @@ if(platform==='darwin'){
  icon=path.join(out,'folio.icns');run('iconutil',['-c','icns',set,'-o',icon]);
 }
 const [folder]=await packager({dir:root,out,name:'Folio',executableName:'Folio',platform,arch,icon,overwrite:true,prune:true,asar:true,appBundleId:'app.getfolio.desktop',appCategoryType:'public.app-category.education',darwinDarkModeSupport:true,
- ignore:[/^\/(?!(?:public|desktop|node_modules|build)(?:\/|$)|(?:package\.json|server\.mjs)$).+/]});
+ ignore:[/^\/(?!(?:public|desktop|node_modules|build)(?:\/|$)|(?:package\.json|server\.mjs|LICENSE|THIRD_PARTY_NOTICES\.md)$).+/]});
 const app=path.join(folder,'Folio.app'),resources=platform==='darwin'?path.join(app,'Contents','Resources'):path.join(folder,'resources');
 const archive=path.join(resources,'app.asar'),header=getRawHeader(archive).header;
-const allowed=new Set(['public','desktop','node_modules','build','package.json','server.mjs']);
+const allowed=new Set(['public','desktop','node_modules','build','package.json','server.mjs','LICENSE','THIRD_PARTY_NOTICES.md']);
 if(Object.keys(header.files).some(k=>!allowed.has(k)))throw Error('Unexpected packaged files');
 let count=0;
 function audit(files,base=''){for(const [n,e] of Object.entries(files)){const p=path.join(base,n);if(e.files)audit(e.files,p);else{count++;if(!p.startsWith('node_modules')){const s=extractFile(archive,p).toString();if(/(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{24,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/.test(s))throw Error('Credential pattern in runtime');}}}}

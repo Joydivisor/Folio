@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('folioDesktop', {
   platform: process.platform,
+  finishLibraryRestore: () => ipcRenderer.invoke('folio:library-restored'),
   openDownload:url=>ipcRenderer.invoke('folio:open-download',url),
   setLanguage: language => ipcRenderer.invoke('folio:language', language),
   windowCommand: command => ipcRenderer.invoke('folio:window-command', command),

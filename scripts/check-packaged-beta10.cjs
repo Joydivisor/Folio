@@ -1,0 +1,19 @@
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {pathToFileURL}=require('node:url');
+(async()=>{
+ const sourcePackage=JSON.parse(fs.readFileSync('package.json')),version=sourcePackage.version;
+ const archive=process.env.FOLIO_TEST_ARCHIVE||path.resolve('dist','v'+version,'Folio-win32-x64/resources/app.asar');
+ const asar=require('@electron/asar');
+ const packagedPackage=JSON.parse(asar.extractFile(archive,'package.json'));
+ if(packagedPackage.version!==version||packagedPackage.folioRevision!==sourcePackage.folioRevision)throw Error('Stale packaged version or revision');
+ for(const file of ['LICENSE','THIRD_PARTY_NOTICES.md','desktop/file-permissions.cjs','public/library-folder.js'])if(!asar.extractFile(archive,path.normalize(file)).equals(fs.readFileSync(file)))throw Error('Missing or stale release file: '+file);
+ const files=asar.listPackage(archive);const allowed=new Set(['public','desktop','node_modules','build','package.json','server.mjs','LICENSE','THIRD_PARTY_NOTICES.md']);
+ if(files.some(f=>!allowed.has(f.split(/[\\/]/).filter(Boolean)[0])))throw Error('Unexpected package root');
+ for(const file of ['public/controls.css','public/segmented-control.js','public/select-menu.js','server.mjs','desktop/ai-vault.cjs','public/continuous-reader.js','public/artifact-renderer.js','public/artifact-parameters.js','public/artifact-edits.js','public/anatomy-plan.js','public/anatomy-view.js','public/diagram-plan.js','public/display-plan.js','public/model-transport.js','public/geometry-model.js','public/geometry-view.js','public/beta10.css','public/vendor/anatomy/iso-kit.mjs','public/vendor/anatomy/LICENSE','public/vendor/anatomy/NOTICE.md','public/app.js','public/document-file.js','public/import-permission.js','public/workspace-store.js','public/appearance.css','public/pdf-selection.js','public/reflow-layout.js','public/reflow-view.js','public/reflow.css','public/workspace-manager.js','public/annotations.js','public/library-organization.js','public/collections-ui.js','public/library-items-ui.js','public/library-organization.css','public/notebook.js']){
+  if(!asar.extractFile(archive,path.normalize(file)).equals(fs.readFileSync(file)))throw Error('Stale packaged file: '+file);
+ }
+ for(const archived of files){const file=archived.replace(/^[/\\]/,'');if(/^(?:public|desktop|build)[/\\]/.test(file)&&fs.existsSync(file)&&fs.statSync(file).isFile()&&!asar.extractFile(archive,path.normalize(file)).equals(fs.readFileSync(file)))throw Error('Stale runtime file: '+file);}
+ for(const file of files.filter(f=>/^[/\\](public|desktop)[/\\].*\.(js|cjs|mjs|json|html)$/.test(f))){const text=asar.extractFile(archive,path.normalize(file.replace(/^[/\\]/,''))).toString();if(/(?:ghp_|github_pat_)[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{24,}/.test(text))throw Error('Credential pattern in runtime');}
+ const {makeServer}=await import(pathToFileURL(path.join(archive,'server.mjs')).href),port=4197,server=makeServer({port});await new Promise(r=>server.listen(port,'127.0.0.1',r));
+ try{for(const route of ['/controls.css','/segmented-control.js','/select-menu.js','/continuous-reader.js','/anatomy-view.js','/vendor/anatomy/iso-kit.mjs','/geometry-model.js','/beta10.css','/','/document-file.js','/pdf-selection.js','/reflow-layout.js','/reflow-view.js','/reflow.css']){const r=await fetch('http://127.0.0.1:'+port+route);if(!r.ok||!(await r.text()).length)throw Error('Missing route '+route);}const status=await(await fetch('http://127.0.0.1:'+port+'/api/status')).json();if(status.configured)throw Error('Fresh runtime contains a key');console.log('PASS packaged byte parity, allowlist, credential scan, runtime assets and empty key.');}finally{server.close();server.closeAllConnections();}
+})().catch(e=>{console.error(e.message);process.exitCode=1;});

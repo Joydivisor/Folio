@@ -14,7 +14,7 @@ const paths = await packager({
   icon: path.join(root, 'build', 'folio.ico'),
   overwrite: true, prune: true, asar: true,
   // Only runtime sources and dependencies enter a public download.
-  ignore: [/^\/(?!(?:public|desktop|node_modules|build)(?:\/|$)|(?:package\.json|server\.mjs)$).+/],
+  ignore: [/^\/(?!(?:public|desktop|node_modules|build)(?:\/|$)|(?:package\.json|server\.mjs|LICENSE|THIRD_PARTY_NOTICES\.md)$).+/],
   win32metadata: { CompanyName: 'Folio', FileDescription: 'Folio reading workspace', ProductName: 'Folio' },
 });
 console.log(paths.join('\n'));

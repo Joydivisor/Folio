@@ -32,12 +32,14 @@ jobs:
         run: |
           hdiutil verify releases/*.dmg
           node scripts/smoke-desktop.mjs
+          node scripts/test-library-restart.cjs
       - name: Install, launch and uninstall Debian package
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y xvfb ./releases/*.deb
           FOLIO_SMOKE_EXECUTABLE=/opt/Folio/Folio xvfb-run -a node scripts/smoke-desktop.mjs
+          FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a node scripts/test-library-restart.cjs
           sudo apt-get remove -y folio
           test ! -e /opt/Folio/Folio
       - uses: actions/upload-artifact@v4

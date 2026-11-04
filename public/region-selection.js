@@ -3,7 +3,7 @@ import {clamp,rectangle,adjustRectangle,containsCenter,joinGlyphs} from './regio
 import {normalizeOCRText} from './ocr-text.js';
 
 export function selectReadingRegion({getState,store,addNote,visualize,onClose=()=>{}}){
- const initial=getState(),page=document.querySelector('#documentContent .pdf-page,#documentContent .paper');
+ const initial=getState(),page=document.querySelector('#documentContent [data-page="'+initial.page+'"]');
  if(!initial.ready||!page)throw Error(ui('请先打开文献','Open a document first'));
  const same=()=>page.isConnected&&getState().ready&&getState().entry.id===initial.entry.id&&getState().entry.revision===initial.entry.revision&&getState().page===initial.page;
  const overlay=node('div',undefined,{className:'precision-overlay',tabIndex:0}),box=node('div',undefined,{className:'precision-box',tabIndex:0}),dock=node('div',undefined,{className:'precision-dock'});

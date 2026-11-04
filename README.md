@@ -1,94 +1,114 @@
 # Folio
 
-一个以本地文献为中心的交互学习台。左侧阅读，右侧解释、图示与交互实验。
+**以本地文献为中心的交互学习台。阅读、做笔记，把难懂的内容变成可以探索的图示。**
 
-## 下载与运行
+[下载 V1.0.0](https://github.com/Joydivisor/Folio/releases/tag/v1.0.0) · [官网](https://getfolio.pages.dev/) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/Joydivisor/Folio/issues) · [English overview](#english-overview)
 
-- 下载页：https://getfolio.pages.dev/
-- Windows 发布：https://github.com/Joydivisor/Folio-downloads/releases
-- 当前版本：**1.0.0-beta.9**，11 月 3 日 r3 选文更新。
+Folio 将文献阅读与 AI 解释放在同一工作区。文献、批注、笔记和阅读位置保存在本机；AI 使用你自己选择的模型服务。不配置 AI 也可以阅读和管理文献。
 
-下载 Windows x64 安装程序 `Folio-Setup-1.0.0-beta.9-win-x64.exe`，选择中英文、安装位置及是否创建桌面快捷方式。安装包自带完整程序，不需要 Node.js 或另行下载运行环境。默认安装到当前用户的 `AppData\Local\Programs\Folio`，也可以选择其他空文件夹。
+## 安装
 
-安装后可从开始菜单启动。更新时先关闭 Folio，再将新版安装到原位置。可从 Windows「已安装的应用」或开始菜单卸载；卸载保留个人文献、批注、笔记和设置。安装程序仅移除清单中的程序文件，不递归删除整个安装文件夹。旧 ZIP 版用户可直接安装新版，应用数据仍使用原来的独立目录。
+| 平台 | 安装包 | 安装方式 |
+| --- | --- | --- |
+| Windows 10 / 11 · x64 | [EXE](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-Setup-1.0.0-win-x64.exe) · [ZIP](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-Setup-1.0.0-win-x64.zip) | 运行安装程序，选择安装位置和桌面快捷方式；ZIP 需先解压。 |
+| macOS 13+ · Apple Silicon | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-1.0.0-mac-arm64.dmg) | 打开后将 Folio 拖入 Applications。 |
+| macOS 13+ · Intel | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-1.0.0-mac-x64.dmg) | 打开后将 Folio 拖入 Applications。 |
+| Ubuntu 22.04 · x64 | [DEB](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/Folio-1.0.0-linux-x64.deb) | 使用系统软件安装器，或运行下面的命令。 |
 
-这是尚未签名的测试版，可检查更新并明确下载，暂不自动安装更新。提供 Windows x64、macOS Apple Silicon / Intel，以及 Ubuntu/Debian x64 测试包。macOS 测试版未经过 Developer ID 签名和 Apple 公证。
+```sh
+sudo apt install ./Folio-1.0.0-linux-x64.deb
+```
 
-## 主要功能
+安装包自带运行环境，无需安装 Node.js。其他 Linux 发行版尚未验证。Windows 包尚未签名，macOS 包采用 ad-hoc 签名，未经过 Apple 公证；系统可能显示发布者或验证提示。请核对下载来源与 [SHA-256 校验清单](https://github.com/Joydivisor/Folio/releases/download/v1.0.0/SHA256SUMS.txt)。
 
-- 本地 PDF、TXT、Markdown 文献库：连接文件夹、导入、搜索、收藏、最近阅读和网格/列表视图。
-- 精确选文：保留原始 PDF 外观，按栏组织文字；首尾蓝色拖柄、原文放大镜、边缘自动滚动与键盘微调。
-- 右上角问号 / F1：可搜索的中英文功能说明。
-- 文献阅读：页码、缩放、阅读位置；五色高亮、下划线、便笺和来源定位；持久全文索引、PDF 目录、搜索与公式/图表区域引用。
-- AI 画布：拖入选文，结合书中上下文解释；解释、对比表、分步推导、过程、概念图，以及可交互的置换、导出列、立方体/正四面体/正八面体 3D 旋转。
-- 交互作品：版本历史、手动编辑、追问修改、撤销/重做和命名快照；保存后可恢复实验进度与视角。
-- 笔记：保存解释与实验，按文献和问题回看，导出 Markdown。对话相互隔离，自动整理对话为笔记默认关闭。
-- 中文/英文、日间/夜间外观、统一设置和顶部菜单。阅读标签支持 ×、右键关闭。
+更新前退出 Folio：Windows 安装到原位置，macOS 替换应用，Linux 安装新 DEB。已有文献库、笔记和设置会保留。Windows 卸载仅删除程序清单内的文件，保留个人应用数据。旧版下载入口继续通过 [Folio-downloads](https://github.com/Joydivisor/Folio-downloads) 提供兼容镜像。
 
-AI 需要用户自行配置模型服务和密钥；模型费用由服务商收取。可视化只支持应用已实现的图形与实验类型，不保证任意原文都能生成准确的交互实验。计算支持的群论操作由本地程序验证，概念关系和解释仍需结合原文检查。
+## 可以做什么
 
-## 数据与隐私
+- **读文献**：PDF、TXT 和 Markdown；默认连续向下滚动，也可切换逐页。保存阅读位置，支持目录、全文搜索和本地中英文 OCR。
+- **管理资料**：连接文件夹或导入副本；收藏、标签、阅读状态、多级分类，以及正文、补充材料和版本附件。重启自动恢复文献目录，无需手动刷新。
+- **选文与批注**：保持 PDF 原始外观，按栏整理选择顺序；拖动选区、引用公式或图表区域，添加高亮、下划线和便笺。
+- **边读边问**：选中或拖入原文，直接获得带来源的解释。回答进入可编辑画布，流程图、完整推导、对照表等按内容嵌入，无需专门的触发词。
+- **探索图示**：群论与置换实验、几何体、受约束网格，以及基于 [Anatomy](https://github.com/wheresryan22/anatomy) 的参数化 SVG 部件插图。支持局部修改、版本历史、撤销、重做和命名快照。
+- **留下笔记**：笔记按原文和问题组织，可回到来源页，支持 Markdown / LaTeX 预览和导出。自动整理对话为笔记默认关闭。
+- **按习惯使用**：中英文、深浅主题、统一菜单、键盘导航与滑动分段切换；按 F1 打开可搜索的功能说明。
 
-文献、批注、笔记与阅读位置保存在设备上。桌面版与浏览器版使用不同的数据目录；删除安装文件夹不会清除系统应用数据。连接文件夹时读取本地文献；导入会复制文件，避免覆盖同名原件。
+3D 输出限于应用实现的几何、网格和数学实验；Anatomy 用于结构示意，并非任意模型生成或医学解剖数据库。Folio 不运行模型提供的任意代码。暂不支持 EPUB、Zotero 双向同步或把批注写回原 PDF。
 
-桌面版可选择“在本机加密保存”，通过系统保护保存，也可以只在当前运行中使用；网页不读取已托管密钥。托管密钥分别绑定服务商与用户配置的目标地址。原始密钥文件不属于仓库或下载包。全新启动时文献库为空，不预置演示文档、笔记、文件夹连接或密钥。
+## 模型与本地数据
 
-启用 AI 后，提问、对话上下文和用于解释的原文片段会发送给所选模型服务；本地保存不意味着 AI 请求离线。应用不自动上传整个文献库。自动整理笔记为本地可选功能。
+在设置中选择服务商、模型并填写自己的 API Key。支持 OpenAI 兼容 Chat Completions 接口，以及 Claude 原生 Messages 接口；DeepSeek、OpenAI 和 Gemini 有对应配置入口。不同模型共用受验证的绘图协议，Anatomy 不依赖 Claude Code。模型需支持相应文本接口；不提供 ChatGPT / Claude 订阅登录或免费推理额度。
 
-支持本地中英文印刷体 OCR（需人工校正公式）、Zotero RDF 单向导入及缺失附件定位；不支持 EPUB、Zotero 双向同步、PDF 批注写回或任意 3D 场景生成。批注保存在应用数据中，可导出 Markdown。可从文件菜单备份工作区，默认不包含原始文献；勾选后可包含最多 250 MB 的文献副本。密钥不进入备份。
+调用 AI 时，问题、对话上下文和相关原文片段会发送到所选服务商，费用由服务商收取。应用不会自动上传整个文献库。桌面版密钥默认仅在当前运行中使用；选择保存时使用系统提供的加密存储。系统不提供安全存储时，不使用明文持久保存。
 
-## 本地开发
+文献、批注、笔记和阅读位置保存在设备上。导入副本不会覆盖同名原件；从文献库移除条目不删除磁盘原文件。文件菜单可备份工作区，文献副本可选包含，密钥不会进入备份。Zotero 支持 RDF 单向导入和缺失附件定位。安装包以空文献库启动，不包含开发者密钥、私人文献或测试资料。
+
+## 从源码运行
 
 需要 Node.js 24 和 npm。
 
-```powershell
+```sh
+git clone https://github.com/Joydivisor/Folio.git
+cd Folio
 npm ci
-npm start
-# 浏览器打开 http://127.0.0.1:4173
 npm run desktop
 ```
 
-桌面版在本机 4174 端口启动服务；开发网页使用 4173。服务只监听回环地址。
+仅运行网页开发版：
 
-```powershell
+```sh
+npm start
+# http://127.0.0.1:4173
+```
+
+桌面版本地服务使用 `127.0.0.1:4174`。服务只监听回环地址；网页开发版与桌面版使用各自的数据目录。
+
+## 测试与构建
+
+```sh
 npm run check
 npm test
+node scripts/test-library-restart.cjs
+```
+
+自动测试使用合成文献和固定模型响应，不调用付费 API。目录重启测试会启动隔离的 Electron 进程，不读取个人资料库。完整 UI 回归入口和历史验收记录见 [开发文档](docs/README.md)。
+
+Windows：
+
+```sh
 npm run package:win
 npm run installer:win
 ```
 
-程序产物位于 `dist/v1.0.0-beta.9/Folio-win32-x64/`；安装程序位于 `releases/Folio-Setup-1.0.0-beta.9-win-x64.exe`。打包按白名单只包含 `public/`、`desktop/`、`build/`、生产依赖、`server.mjs` 和 `package.json`。不包含测试数据、截图、凭据或开发缓存。
+安装器需要 [NSIS 3.13](https://nsis.sourceforge.io/Download)：将便携编译器放入 `.installer-cache/nsis-3.13/`，或设置 `NSIS_EXE` 指向 `makensis.exe`。程序输出到 `dist/v1.0.0/Folio-win32-x64/`，安装器输出到 `releases/Folio-Setup-1.0.0-win-x64.exe`。
 
-`releases/` 只保留当前版本各平台安装包、内测 ZIP、发布说明和校验清单；验证报告位于 `releases/verification/`。内测 ZIP 可用 `python scripts/package-windows-test-zip.py` 生成：先核对清单中的 EXE 校验值，已有 ZIP 不会被覆盖。生成目录与测试报告不提交源码仓库。
+macOS / Linux 在对应平台执行 `npm run package:unix`。仓库中的 [跨平台工作流](.github/workflows/unix-release.yml) 会构建 DMG / DEB 并执行原生启动检查；它不会生成 Apple Developer ID 签名或公证。
 
-安装器使用 [NSIS 3.13](https://nsis.sourceforge.io/Download) 的 Modern UI 2。将官方便携编译器解压到 `.installer-cache/nsis-3.13/`，或用环境变量 `NSIS_EXE` 指向 `makensis.exe`，再执行上面的构建命令。版本信息与精确卸载清单由构建脚本生成。手动集成测试：`powershell -ExecutionPolicy Bypass -File scripts/test-installer.ps1`，会在临时测试目录执行安装、更新和卸载；检测到现有安装或同名快捷方式时会停止。
+打包仅包含运行代码、图标、生产依赖和许可证文件，不包含测试资料、截图、开发缓存或个人数据。生成目录和测试报告不提交源码仓库。
 
-真实模型测试为手动步骤，会消耗模型额度；CI 只运行离线测试。将 `FOLIO_API_KEY_FILE` 环境变量指向设备上的密钥文件，再运行 `scripts/evaluate-ai.mjs` 等评估脚本；不要将密钥写入代码或命令参数。评估结果写入已忽略的 `tests/reports/`。
+## 项目结构与贡献
 
-## 项目结构
+| 目录 | 内容 |
+| --- | --- |
+| `public/` | 阅读器、文献库、笔记、模型适配和交互画布 |
+| `desktop/` | Electron 窗口、受限 IPC、文件权限和密钥托管 |
+| `server.mjs` | 本地资源服务与模型代理 |
+| `scripts/`、`tests/` | 构建、离线测试和隔离 UI 回归 |
+| `installer/`、`build/` | Windows 安装器和应用图标 |
+| `docs/` | 实现说明、能力边界和历史记录 |
 
-- `public/`：阅读、文献库、批注、笔记、AI 画布与交互实验。
-- `desktop/`：Electron 窗口、菜单、受限 IPC 与密钥托管。
-- `server.mjs`：本地静态资源与模型代理。
-- `scripts/`：桌面打包、品牌图标生成和手动评估。
-- `tests/`：数学、来源验证、模型代理与交互状态测试。
-- `build/`：应用图标。
-- `docs/`：文档索引；`docs/history/` 保存旧版验收记录与历史升级计划。
+欢迎通过 Issue 和 Pull Request 参与。请先阅读 [贡献说明](CONTRIBUTING.md)；安全问题按 [安全报告说明](SECURITY.md) 私下提交。
 
-应用源码仓库为私有。下载站源码另存于私有仓库 `Joydivisor/Folio.github.io`；公开安装包与校验文件放在 `Joydivisor/Folio-downloads`，访客下载无需登录。桌面程序分发其运行所需的客户端代码，私有仓库不等同于客户端代码不可提取。
+## 许可证
 
-第三方依赖的许可随软件包分发；应用自身未授予开源许可。
+Copyright © 2026 Joydivisor and Folio contributors.
 
-## 跨平台发布
+Folio 自有代码采用 **GNU General Public License v3.0 only**，SPDX 标识为 `GPL-3.0-only`。完整条款见 [LICENSE](LICENSE)。第三方组件保留各自许可，详见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
-私有仓库的 `Build macOS and Linux` 工作流在对应系统上运行测试、打包和启动检查。Mac 下载 DMG 后将 Folio 拖入 Applications；Linux 使用系统软件安装器安装 `.deb`，首轮验证平台为 Ubuntu 22.04 x64。未公证 Mac 测试包可能被 Gatekeeper 拦截，当前未承诺普通用户无提示安装。Windows 继续提供安装向导。
+## English overview
 
-历史升级计划与当时记录的 ChatGPT OAuth 接入条件见 [UPGRADE_PLAN.md](docs/history/UPGRADE_PLAN.md)。文档导航见 [docs/README.md](docs/README.md)。
+Folio is a local-first desktop workspace for reading papers, annotating passages, writing source-linked notes and exploring interactive explanations. It supports continuous PDF reading, local document collections, editable AI canvases, diagrams, bounded 3D experiments and Anatomy-based SVG illustrations.
 
-## 文献管理（beta.9 r4）
+Download the package for your platform above; Node.js is only needed for development. Bring your own model endpoint and API key for AI features. Reading and notes work without a key. AI requests send the selected context to your chosen provider; local storage does not make inference offline. Windows packages are unsigned and macOS packages are not Apple-notarized.
 
-阅读侧栏的笔记、计数和导出只对应当前文件；全局笔记按来源文件分组。左侧「我的分类」支持子分类和多个归属，父分类会包含子分类文献。分类与磁盘目录分开；删除分类不删除文件或笔记。
-
-选择文献后点击「资料」编辑标题、作者、年份、DOI、标签和阅读状态。可将独立文件明确加入同一条目作为正文、补充材料或版本文件，选择主文件，或将附件独立列出。条目的笔记入口聚合各附件笔记，引用仍保留各自文件和页码。标签可以与未读／阅读中／已读／未分类／有笔记筛选组合使用。元数据为手工编辑，不根据同名文件推断同一篇论文。
-
-新增组织信息存入 `folio-library-items` 和 `folio-collections`，纳入工作区备份；不会重写原文或旧笔记来源。UI 回归：以 Electron 运行 `scripts/test-note-organization.cjs`，使用独立测试配置，不读取用户数据。
+Source: **GPL-3.0-only**. Contributions and reproducible bug reports are welcome.
