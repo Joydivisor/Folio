@@ -45,7 +45,7 @@ if(!process.versions.electron){
   }else{
    const count=phase==='restart'?3:4;
    await until(`document.querySelectorAll('[data-doc]').length===${count}&&document.querySelector('#folderName').textContent==='Restart library'`);
-   if(phase!=='offline')await until("document.querySelector('#folderDescription').textContent.includes('已连接')||document.querySelector('#folderDescription').textContent.includes('已恢复目录')");
+   if(phase!=='offline')await until("/已连接|已恢复目录|Connected|Catalog restored/.test(document.querySelector('#folderDescription').textContent)");
    finishRestore();
    assert.equal(await js("JSON.parse(localStorage.getItem('jianwei-favorites'))[0]"),'folder:Restart library:first.txt');
    if(phase!=='offline'){
