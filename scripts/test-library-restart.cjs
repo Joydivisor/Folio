@@ -26,6 +26,8 @@ if(!process.versions.electron){
 }else{
  const {app,BrowserWindow}=require('electron'),{pathToFileURL}=require('node:url');
  const phase=process.argv[2],temp=process.argv[3],origin='http://127.0.0.1:4198';
+ // This filesystem regression uses an offscreen window; CI Macs may have no usable GPU.
+ app.disableHardwareAcceleration();
  app.setPath('userData',path.join(temp,'profile'));let win,server;const errors=[];
  const wait=ms=>new Promise(r=>setTimeout(r,ms)),js=s=>win.webContents.executeJavaScript(s);
  async function until(s){for(let i=0;i<120;i++){if(await js(s))return;await wait(100);}throw Error('Timed out: '+s);}
