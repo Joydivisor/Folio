@@ -1,8 +1,9 @@
 # Folio 文档
 
-- 当前稳定版：**1.0.0**，源码采用 GPL-3.0-only；版本以 [package.json](../package.json) 为准。
+- 当前稳定版：**1.0.1**，源码采用 GPL-3.0-only；版本以 [package.json](../package.json) 为准。
 - [开发与打包说明](../README.md)：启动、测试、构建和项目结构。
-- [正式版下载与校验](https://github.com/Joydivisor/Folio/releases/tag/v1.0.0)：各平台安装包和 SHA-256 清单。
+- [正式版下载与校验](https://github.com/Joydivisor/Folio/releases/tag/v1.0.1)：各平台安装包和 SHA-256 清单。
+- [V1.0.1 下载入口迁移](release-1.0.1.md)：统一主仓库与旧版手动升级说明。
 - [V1.0.0 发布与重启修复](release-1.0.0.md)：启动恢复、验证方式与开源说明。
 - [beta.10 实施与验收](beta10-plan.md)：连续阅读、自然图文、通用 Anatomy 与本地构建。
 - [r3 界面一致性验收](ui-consistency-r3.md)：搜索框、统一菜单、滑动切换与全界面检查范围。

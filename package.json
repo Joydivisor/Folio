@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local-first reading workspace with continuous documents, interactive artifacts and model-independent illustrations",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -15,9 +15,14 @@
   "keywords": [],
   "author": "Joydivisor",
   "license": "GPL-3.0-only",
-  "repository": {"type": "git", "url": "https://github.com/Joydivisor/Folio.git"},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Joydivisor/Folio.git"
+  },
   "homepage": "https://getfolio.pages.dev/",
-  "bugs": {"url": "https://github.com/Joydivisor/Folio/issues"},
+  "bugs": {
+    "url": "https://github.com/Joydivisor/Folio/issues"
+  },
   "type": "module",
   "dependencies": {
     "@tesseract.js-data/chi_sim": "1.0.0",

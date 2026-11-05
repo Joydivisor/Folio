@@ -62,6 +62,12 @@ test('update metadata excludes redirects and credentials and orders beta release
  assert.equal(compareVersions('1.0.0-beta.5','1.0.0-beta.4'),1);assert.equal(compareVersions('1.0.0','1.0.0-beta.5'),1);
  const r={version:'1.0.0-beta.5',downloads:[{id:'win-x64',url:'https://github.com/Joydivisor/Folio-downloads/releases/download/v1.0.0-beta.5/Folio.exe',sha256:'a'.repeat(64),sizeBytes:100}]};assert.equal(validateRelease(r),r);assert.throws(()=>validateRelease({...r,downloads:[{...r.downloads[0],url:'https://evil.invalid/Folio.exe'}]}));
 });
+test('update metadata accepts the public source repository while preserving the exact release boundary',()=>{
+ const url='https://github.com/Joydivisor/Folio/releases/download/v1.0.1/Folio-1.0.1-mac-arm64.dmg';
+ const release={version:'1.0.1',revision:'r1',downloads:[{id:'mac-arm64',url,sha256:'b'.repeat(64),sizeBytes:100}]};
+ assert.equal(validateRelease(release),release);
+ for(const invalid of [url.replace('/Joydivisor/','/someone/'),url.replace('/Folio/','/Folio-copy/'),url.replace('/v1.0.1/','/v1.0.0/'),url.replace('github.com','github.com.example.org'),url.replace('https:','http:'),url.replace('https://','https://name:password@'),url+'?redirect=1',url+'#download'])assert.throws(()=>validateRelease({...release,downloads:[{...release.downloads[0],url:invalid}]}));
+});
 test('malformed display receives one repair and retains explanation if repair is still unsupported',async()=>{
  const invalid={...plan,kind:'derivation',steps:[],explanation:answer},valid={...invalid,steps:[{title:'Step 1',text:'A valid argument',basis:'deduction'}]};let calls=0;
  const parsed=await requestStructured(async()=>JSON.stringify(++calls===1?invalid:valid),'task',(raw,{attempt})=>parseReading(raw,[],{strictPlan:attempt===0}));assert.equal(calls,2);assert.equal(parsed.plan.kind,'derivation');

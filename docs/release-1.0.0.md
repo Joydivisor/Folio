@@ -18,6 +18,6 @@ macOS / Linux 工作流在原生 runner 上构建、启动并检查安装产物�
 
 ## 开源
 
-自有代码采用 GPL-3.0-only；Anatomy 等第三方组件保留原始许可证和来源说明。安装包包含 GPL 正文和第三方声明。源代码、构建脚本及安装包集中发布到 `Joydivisor/Folio`；`Folio-downloads` 继续镜像下载供旧版检查更新使用。
+自有代码采用 GPL-3.0-only；Anatomy 等第三方组件保留原始许可证和来源说明。安装包包含 GPL 正文和第三方声明。源代码、构建脚本及安装包集中发布到 `Joydivisor/Folio`。首发时使用的 `Folio-downloads` 兼容镜像在 [1.0.1](release-1.0.1.md) 中退役，旧版需从官网手动下载一次以迁移更新入口。
 
 Windows 包未签名，macOS 包未经过 Apple 公证。几何与模型输出能力边界见根目录 README。

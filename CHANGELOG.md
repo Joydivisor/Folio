@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 · 2026-11-05
+
+- Use the public `Joydivisor/Folio` repository for all installer downloads and update links. Accept its exact versioned release URLs while retaining the existing URL safety checks.
+- Retire the separate `Folio-downloads` public mirror. Versions 1.0.0 and earlier need one manual download from the website to migrate; installing over the existing app retains documents, notes and settings.
+- Include Windows x64, macOS Apple Silicon / Intel and Linux x64 packages. The missing Apple Silicon package was also added to the original 1.0.0 release from its original source tag.
+
 ## 1.0.0 · 2026-11-05
 
 - First stable, public source release under GPL-3.0-only, with Windows, macOS and Linux packages.
