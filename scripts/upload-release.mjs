@@ -55,7 +55,11 @@ async function main() {
   if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || tag !== 'v' + version) throw Error('Set --repo owner/repo and --tag matching package.json.');
   const run = promisify(execFile);
   const gh = async args => (await run('gh', args, {windowsHide: true, maxBuffer: 4 * 1024 * 1024})).stdout;
-  const getRelease = async () => JSON.parse(await gh(['api', 'repos/' + repo + '/releases/tags/' + encodeURIComponent(tag)]));
+  // An unpublished draft can exist before its Git tag. Resolve its ID through
+  // gh's draft-aware lookup instead of the public releases/tags endpoint.
+  const releaseId = (await gh(['release', 'view', tag, '--repo', repo, '--json', 'databaseId', '--jq', '.databaseId'])).trim();
+  if (!/^\d+$/.test(releaseId)) throw Error('Could not resolve the release draft.');
+  const getRelease = async () => JSON.parse(await gh(['api', 'repos/' + repo + '/releases/' + releaseId]));
   assertDraft(await getRelease(), tag);
   const installers = new Set([`Folio-Setup-${version}-win-x64.exe`, `Folio-Setup-${version}-win-x64.zip`, `Folio-${version}-mac-arm64.dmg`, `Folio-${version}-mac-x64.dmg`, `Folio-${version}-linux-x64.deb`]);
   const permitted = new Set([...installers, `Folio-Setup-${version}-win-x64.exe.blockmap`, 'latest.yml', 'SHA256SUMS.txt']);
