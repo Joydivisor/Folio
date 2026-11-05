@@ -40,6 +40,10 @@
     "electron": "^45.1.0",
     "fake-indexeddb": "6.2.7"
   },
+  "overrides": {
+    "glob": "14.0.2",
+    "minimatch": "11.0.1"
+  },
   "productName": "Folio",
   "private": true,
   "folioRevision": "r1"

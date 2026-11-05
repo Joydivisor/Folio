@@ -2,6 +2,8 @@ name: Check Folio
 on: [push, pull_request]
 permissions:
   contents: read
+env:
+  electron_config_cache: ${{ github.workspace }}/.electron-cache
 jobs:
   test:
     runs-on: windows-latest
@@ -11,7 +13,16 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Read Electron cache version
+        id: electron-version
+        shell: bash
+        run: node -e "process.stdout.write('version='+require('./package-lock.json').packages['node_modules/electron'].version+'\n')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .electron-cache
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron-version.outputs.version }}
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npm run check
       - run: npm test
       - run: node scripts/test-library-restart.cjs

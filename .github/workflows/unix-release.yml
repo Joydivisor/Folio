@@ -14,6 +14,8 @@ on:
         type: string
 permissions:
   contents: write
+env:
+  electron_config_cache: ${{ github.workspace }}/.electron-cache
 jobs:
   build:
     timeout-minutes: 25
@@ -28,10 +30,21 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Read Electron cache version
+        id: electron-version
+        shell: bash
+        run: node -e "process.stdout.write('version='+require('./package-lock.json').packages['node_modules/electron'].version+'\n')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .electron-cache
+          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron-version.outputs.version }}
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npm run check
       - run: npm test
-      - run: npm run package:unix
+      - name: Build platform package
+        id: package
+        run: npm run package:unix
       - name: Validate disk image and runtime on macOS
         if: runner.os == 'macOS'
         run: |
@@ -48,25 +61,34 @@ jobs:
           sudo apt-get remove -y folio
           test ! -e /opt/Folio/Folio
       - name: Upload verified packages to the release draft
+        id: release-upload
         if: inputs.release_tag != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           FOLIO_RELEASE_TAG: ${{ inputs.release_tag }}
-        run: |
-          test "$FOLIO_RELEASE_TAG" = "v$(node -p "require('./package.json').version")"
-          test "$(gh release view "$FOLIO_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" = true
-          shopt -s nullglob
-          packages=(releases/*.dmg releases/*.deb)
-          test "${#packages[@]}" -eq 1
-          gh release upload "$FOLIO_RELEASE_TAG" "${packages[@]}" --repo "$GITHUB_REPOSITORY" --clobber
-      - uses: actions/upload-artifact@v4
+        run: node scripts/upload-release.mjs
+      - name: Retain build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-checks
+          path: |
+            dist/v*/package-audit.json
+            dist/v*/runtime-smoke.json
+            dist/v*/build-timing.json
+            dist/v*/release-upload.json
+            tests/reports/library-restart.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Retain packages when not already in the release
+        if: always() && steps.package.outcome == 'success' && (inputs.release_tag == '' || steps.release-upload.outcome != 'success')
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: |
             releases/*.dmg
             releases/*.deb
-            dist/v*/package-audit.json
-            dist/v*/runtime-smoke.json
+          compression-level: 0
           if-no-files-found: error
           retention-days: 7
