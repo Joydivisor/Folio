@@ -22,7 +22,7 @@ import {mountGeometry} from './geometry-view.js';
 import {mountDerived} from './derived-view.js';
 import {setupWorkspaceManager} from './workspace-manager.js';
 import {ui,node,button,modal} from './workspace-ui.js';
-import {isNewerRelease,validateRelease} from './release-info.js';
+import {setupUpdates} from './updates.js';
 import {setupReaderNavigation} from './reader-navigation.js';
 import {openWorkspace,DATA_KEYS} from './workspace-store.js';
 import {setupShell} from './shell.js';
@@ -351,7 +351,8 @@ init().then(()=>{resetVisual();setTab('visual');routeNotes();});
 
 const manager=setupWorkspaceManager({store:workspace,dbOp,entries,refresh:refreshCache,notes,saveNotes:()=>{saveLocal('jianwei-notes',notes);renderNotes();},openDocument});
 const zoteroButton=button('Zotero',()=>manager.importedLibrary());zoteroButton.className='connect-folder';document.querySelector('.library-sidebar').insertBefore(zoteroButton,document.querySelector('.sidebar-bottom'));
-async function checkUpdates(){const {body}=modal(ui('软件更新','Software updates'));const info=await (await fetch('/api/version')).json();body.append(node('p',ui('当前版本：','Current version: ')+info.version+' · '+(info.revision||'r0')));const release=validateRelease(await (await fetch('/api/release')).json());body.append(node('p',isNewerRelease(release,info)?ui('发现新版本：','New version: ')+release.version+' · '+(release.revision||''):ui('当前已是最新可用版本。','You have the latest available version.')));const id=info.platform==='win32'?'win-x64':info.platform==='darwin'?'mac-'+info.arch:'linux-'+info.arch;const files=release.downloads.filter(d=>!window.folioDesktop||d.id===id);for(const file of files)body.append(button(file.platform+' · '+file.format,async()=>{if(window.folioDesktop)await window.folioDesktop.openDownload(file.url);else window.open(file.url,'_blank','noopener');}));body.append(node('p',ui('下载后关闭 Folio 并运行安装程序。个人文献与笔记保留。','Close Folio before running the downloaded installer. Your documents and notes are retained.')));}
+const updates=setupUpdates({beforeRestart:async()=>{if(document.querySelector('dialog[open]:not(.update-dialog), .note-edit-workspace'))throw Error(ui('请先保存并关闭其他编辑窗口。','Save and close other editing dialogs first.'));document.activeElement?.blur();await workspace.snapshot();await dbOp('files','getAll');}});
+const checkUpdates=updates.open;
 window.addEventListener('folio-feature',e=>{const action={artifacts:()=>artifacts.browse(),backup:manager.exportBackup,restore:manager.importBackup,rollback:manager.rollback,zotero:manager.zotero,updates:checkUpdates}[e.detail];if(action)guard(action)();});
 let disposeScene=null;
 function clearScene(){disposeScene?.();disposeScene=null;}

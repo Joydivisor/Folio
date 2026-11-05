@@ -80,6 +80,7 @@ async function start() {
   await vault.load();
   const pending = new Map();
   const authorized = event => event.sender === mainWindow.webContents && event.senderFrame === mainWindow.webContents.mainFrame && new URL(event.senderFrame.url).origin === ORIGIN;
+  require('./updates.cjs').installUpdates({app, ipcMain, window: mainWindow, authorized, busy: () => pending.size > 0});
   const handle = (channel, fn) => ipcMain.handle(channel, async (event, data) => {
     if (!authorized(event)) throw new Error('请求来源无效。');
     return fn(data);

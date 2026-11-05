@@ -17,7 +17,7 @@ npm test
 
 安装 Electron 和实际打包共享 `electron_config_cache`，默认打包缓存目录为 `.electron-cache`。CI 按系统、架构和 Electron 的确切版本缓存下载，工具链锁文件变化不会无故丢失相同 Electron 的缓存。打包使用当前 Electron npm 包随附的官方 `checksums.json` 校验缓存，兼容旧下载地址形成的缓存目录，避免重复下载和额外联网读取校验文件；校验不匹配时停止，不使用该缓存。打包临时目录位于当前检出目录的 `dist/.packager-tmp`，避免并发检出共用系统临时目录。
 
-Windows 包输出必须在当前检出目录内。可在单独检出目录验证，或用 `FOLIO_PACKAGE_OUT` 指向该检出目录内的独立子目录。Windows 安装器可设置 `NSIS_EXE` 复用官方便携编译器。
+Windows 包输出必须在当前检出目录内。可在单独检出目录验证，或用 `FOLIO_PACKAGE_OUT` 指向该检出目录内的独立子目录。Windows V1.0.2 起由 electron-builder 构建更新兼容的 NSIS 安装器，工具缓存位于 `.installer-cache/electron-builder/`。旧 `installer/folio.nsi` 仅供历史版本参考。
 
 所有平台打包后都运行 `scripts/audit-package.mjs`：限制顶层目录、拒绝构建依赖混入、检查自有运行代码的凭证模式，并记录版本、文件数和 ASAR SHA-256。`dist/v*/build-timing.json` 记录打包耗时，后续可用实际数据定位瓶颈。
 
@@ -46,3 +46,7 @@ DMG/DEB 已压缩，CI 保存它们时使用 `compression-level: 0`，避免重�
 需要向用户交付重新构建的二进制时，先更新版本、创建新草稿、完成各平台验证与校验清单，再公开新版本并切换官网。保留旧版下载地址，不用同名文件覆盖一个已发布版本。仅修改构建工具，并不自动要求现有用户重新安装。
 
 包内容审计和构建通过不等于恶意软件扫描或操作系统签名、公证；这些验证的记录应分别保存。
+
+## V1.0.2 应用内更新
+
+Windows 的 EXE、`.exe.blockmap`、`latest.yml` 和校验清单统一输出到 `releases/v<版本>/`。它们必须一起上传到相同版本的 GitHub Release；脚本仅上传到草稿，公开发布前完成 `node scripts/test-update-install.mjs` 的实际升级验证。详情见 [V1.0.2 发布说明](release-1.0.2.md)。

@@ -5,7 +5,7 @@ import zipfile
 
 root = Path(__file__).resolve().parent.parent
 version = json.loads((root / 'package.json').read_text(encoding='utf-8'))['version']
-release_dir = root / 'releases'
+release_dir = root / 'releases' / f'v{version}'
 installer = release_dir / f'Folio-Setup-{version}-win-x64.exe'
 archive = installer.with_suffix('.zip')
 manifest = release_dir / 'SHA256SUMS.txt'
@@ -33,8 +33,8 @@ readme = '''Folio beta.9 | Windows 安装说明
 首次使用：连接自己的文献文件夹，或导入文件。需要 AI 时，在设置中
 选择服务商，填写自己的 API Key 并选择模型；阅读本地文献不需要 Key。
 
-已有版本：先退出 Folio，再安装到原位置。已有本地文献库、笔记和设置
-会保留；重新安装不会清空之前的使用记录。
+后续更新：打开“帮助 → 检查更新”，下载后选择“重启并更新”。
+已有本地文献库、笔记和设置会保留。
 
 此 Windows 安装包尚未签名，Windows 可能显示发布者或信誉提示。
 请确认文件来自 Folio 开发者；无需关闭系统安全防护。
@@ -56,8 +56,8 @@ For Windows 10 / 11, x64 (64-bit Intel / AMD).
 
 Connect your document folder or import files. To use AI, choose a provider
 in Settings, enter your own API key and select a model. Local reading does
-not require a key. Close Folio before updating at its existing location;
-your library, notes and settings are retained.
+not require a key. For later versions, use Help > Check for updates,
+then Restart and update. Your library, notes and settings are retained.
 
 This Windows package is unsigned, so Windows may display a publisher or reputation
 warning. Verify that the package came from the Folio developer. You do not

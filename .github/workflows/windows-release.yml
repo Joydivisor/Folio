@@ -1,0 +1,68 @@
+name: Build Windows update
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release (leave empty to build only)
+        required: false
+        type: string
+permissions:
+  contents: write
+env:
+  electron_config_cache: ${{ github.workspace }}/.electron-cache
+  ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.installer-cache/electron-builder
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .electron-cache
+            .installer-cache/electron-builder
+          key: windows-updater-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+      - run: npm run check
+      - run: npm test
+      - run: npm run package:win
+      - run: npm run installer:win
+      - run: node scripts/smoke-desktop.mjs
+      - run: node scripts/test-update-install.mjs
+      - run: node scripts/finalize-windows-release.mjs
+      - name: Upload to the existing release draft
+        id: release-upload
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FOLIO_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: node scripts/upload-release.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-update-checks
+          path: |
+            dist/v*/package-audit.json
+            dist/v*/runtime-smoke.json
+            dist/v*/build-timing.json
+            dist/v*/release-upload.json
+            tests/reports/update-install.json
+            tests/reports/update-install-*/*.png
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: success() && (inputs.release_tag == '' || steps.release-upload.outcome != 'success')
+        with:
+          name: windows-release
+          path: |
+            releases/v*/*.exe
+            releases/v*/*.blockmap
+            releases/v*/latest.yml
+            releases/v*/SHA256SUMS.txt
+          compression-level: 0
+          retention-days: 7

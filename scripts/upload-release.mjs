@@ -57,13 +57,19 @@ async function main() {
   const gh = async args => (await run('gh', args, {windowsHide: true, maxBuffer: 4 * 1024 * 1024})).stdout;
   const getRelease = async () => JSON.parse(await gh(['api', 'repos/' + repo + '/releases/tags/' + encodeURIComponent(tag)]));
   assertDraft(await getRelease(), tag);
-  const permitted = new Set([`Folio-Setup-${version}-win-x64.exe`, `Folio-Setup-${version}-win-x64.zip`, `Folio-${version}-mac-arm64.dmg`, `Folio-${version}-mac-x64.dmg`, `Folio-${version}-linux-x64.deb`]);
-  const paths = positionals.length ? positionals : fs.readdirSync('releases').filter(name => permitted.has(name)).map(name => path.join('releases', name));
+  const installers = new Set([`Folio-Setup-${version}-win-x64.exe`, `Folio-Setup-${version}-win-x64.zip`, `Folio-${version}-mac-arm64.dmg`, `Folio-${version}-mac-x64.dmg`, `Folio-${version}-linux-x64.deb`]);
+  const permitted = new Set([...installers, `Folio-Setup-${version}-win-x64.exe.blockmap`, 'latest.yml', 'SHA256SUMS.txt']);
+  const versioned = path.join('releases', 'v' + version);
+  const paths = positionals.length ? positionals : [
+    ...(fs.existsSync(versioned) ? fs.readdirSync(versioned).filter(name => permitted.has(name)).map(name => path.join(versioned, name)) : []),
+    ...fs.readdirSync('releases').filter(name => installers.has(name)).map(name => path.join('releases', name)),
+  ];
   if (!paths.length) throw Error('No versioned installers found.');
   const files = [];
   for (const file of paths) {
     const name = path.basename(file);
     if (!permitted.has(name) || fs.lstatSync(file).isSymbolicLink()) throw Error('Unexpected release file: ' + name);
+    if (name === 'latest.yml' && !fs.readFileSync(file, 'utf8').split(/\r?\n/).includes('version: ' + version)) throw Error('Update manifest version does not match this release.');
     const hash = crypto.createHash('sha256');
     for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
     files.push({name, path: path.resolve(file), size: fs.statSync(file).size, sha256: hash.digest('hex')});

@@ -6,6 +6,8 @@ import {spawn} from 'node:child_process';
 const {version,folioRevision:revision='r0'}=JSON.parse(fs.readFileSync('package.json'));
 const out=path.resolve('dist','v'+version);
 const executable=process.env.FOLIO_SMOKE_EXECUTABLE||fs.readFileSync(path.join(out,'runtime-path.txt'),'utf8');
+const occupied=await fetch('http://127.0.0.1:4174/api/version',{signal:AbortSignal.timeout(1000)}).then(()=>true,()=>false);
+if(occupied)throw Error('Port 4174 is already in use. Run this smoke test in a disposable session; an existing Folio instance was left untouched.');
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'folio-smoke-'));
 const child=spawn(executable,[`--user-data-dir=${profile}`],{stdio:['ignore','pipe','pipe'],windowsHide:true,env:{...process.env}});
 let log='',failure;child.stdout.on('data',d=>log+=d);child.stderr.on('data',d=>log+=d);child.on('error',e=>failure=e);

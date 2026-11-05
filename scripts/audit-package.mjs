@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {getRawHeader, extractFile} from '@electron/asar';
 
 const allowedRoots = new Set(['public', 'desktop', 'node_modules', 'build', 'package.json', 'server.mjs', 'LICENSE', 'THIRD_PARTY_NOTICES.md']);
-const buildOnly = ['@electron/packager', '@electron/asar', '@electron/universal', 'glob', 'minimatch', 'electron', 'fake-indexeddb', '@xmldom/xmldom'];
+const buildOnly = ['@electron/packager', '@electron/asar', '@electron/universal', 'electron-builder', 'app-builder-lib', 'glob', 'minimatch', 'electron', 'fake-indexeddb', '@xmldom/xmldom'];
 
 export async function auditPackage(archive, output) {
   const header = getRawHeader(archive).header;

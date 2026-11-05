@@ -1,0 +1,9 @@
+.update-banner{position:fixed;right:22px;bottom:22px;z-index:1000;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 44px);padding:14px 18px;border:1px solid var(--line,#d9ddd9);border-radius:12px;background:var(--pane,#fff);color:var(--text,#202a25);box-shadow:0 6px 26px #0002;font-size:13px}
+.update-banner[hidden]{display:none}
+.update-banner button,.update-actions button{padding:8px 12px;border:1px solid var(--line,#d9ddd9);border-radius:7px;background:var(--pane,#fff);color:inherit;cursor:pointer}
+.update-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.update-dialog progress{display:block;width:100%;height:12px;accent-color:#3e7763}
+.update-dialog progress[hidden]{display:none}
+.update-dialog [role=alert]:empty{display:none}
+.update-dialog [role=alert]{color:var(--danger,#b33d3d)}
+@media(max-width:600px){.update-banner{left:12px;right:12px;bottom:12px;flex-wrap:wrap}}

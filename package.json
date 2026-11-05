@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local-first reading workspace with continuous documents, interactive artifacts and model-independent illustrations",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -27,6 +27,7 @@
   "dependencies": {
     "@tesseract.js-data/chi_sim": "1.0.0",
     "@tesseract.js-data/eng": "1.0.0",
+    "electron-updater": "6.8.11",
     "elkjs": "^0.12.1",
     "fflate": "^0.8.3",
     "katex": "^0.19.1",
@@ -38,6 +39,7 @@
     "@electron/packager": "^20.3.0",
     "@xmldom/xmldom": "0.9.12",
     "electron": "^45.1.0",
+    "electron-builder": "26.18.0",
     "fake-indexeddb": "6.2.7"
   },
   "overrides": {

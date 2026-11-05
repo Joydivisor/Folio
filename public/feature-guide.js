@@ -53,7 +53,7 @@ export const helpTopics=[
  {id:'backup',name:['备份、Zotero 与更新','Backup, Zotero & updates'],sections:[
   ['备份与恢复','Back up and restore','文件菜单提供工作区备份、恢复备份及恢复上次导入前的数据。文献副本可选择包含；恢复前检查内容，密钥需要单独配置。单独导出笔记不会备份全部工作区。','The File menu offers workspace backup, restore and recovery of the previous workspace. Including document copies is optional. Review the contents before restoring; configure keys separately. Exporting notes alone is not a full workspace backup.'],
   ['Zotero 导入','Import from Zotero','先在 Zotero 中导出 RDF，再使用「文件 → 导入 Zotero」。这是单向导入，不会自动双向同步后续修改。','Export RDF from Zotero, then use File → Import Zotero. This is a one-way import; later changes are not automatically synchronized both ways.'],
-  ['更新软件','Update Folio','帮助 → 检查更新可打开下载入口。安装前退出 Folio；Windows 安装到原位置，Mac 替换应用，Linux 安装新版 DEB。已有文献库、笔记和设置会保留。','Help → Check for updates opens the download entry. Quit Folio first; install at the same Windows location, replace the Mac app, or install the newer Linux DEB. Your library, notes and settings are retained.']
+  ['更新软件','Update Folio','Windows 安装版会自动检查更新。帮助 → 检查更新可下载新版本，下载完成后选择“重启并更新”。Mac 和 Linux 暂时下载新版安装包。文献库、笔记和设置会保留。','The installed Windows app checks for updates automatically. Use Help → Check for updates to download, then choose Restart and update. Mac and Linux currently use a downloaded installer. Your library, notes and settings are retained.']
  ],action:['backup','备份工作区','Back up workspace']},
  {id:'shortcuts',name:['快捷键','Keyboard shortcuts'],sections:[
   ['常用操作','Common actions','Ctrl/Cmd+O：导入文献；Ctrl/Cmd+K：搜索文献库；Ctrl/Cmd+,：设置；Ctrl/Cmd+C：复制选文；F1：功能说明；Escape：取消选区或关闭说明。','Ctrl/Cmd+O: import; Ctrl/Cmd+K: search Library; Ctrl/Cmd+,: settings; Ctrl/Cmd+C: copy selection; F1: feature guide; Escape: dismiss selection or close the guide.'],

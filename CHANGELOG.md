@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 · 2026-11-05
+
+- Add in-app updates to the installed Windows application: check for a stable release, download with progress, then explicitly restart and install. Background checks do not force a download or restart.
+- Retry failed or unverified downloads. Keep pending updates across the current session, and prevent restart while an AI request or note editor needs attention.
+- Build compatible NSIS installers with `electron-builder`; publish the installer, block map and `latest.yml` together on the public `Joydivisor/Folio` release. Preserve the application's data directory and saved documents, notes and settings.
+- Treat 1.0.2 as the starting point for future automatic updates. macOS and Linux retain the manual download workflow.
+
 ## 1.0.1 · 2026-11-05
 
 - Use the public `Joydivisor/Folio` repository for all installer downloads and update links. Accept its exact versioned release URLs while retaining the existing URL safety checks.

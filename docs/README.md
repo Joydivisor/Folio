@@ -1,8 +1,9 @@
 # Folio 文档
 
-- 当前稳定版：**1.0.1**，源码采用 GPL-3.0-only；版本以 [package.json](../package.json) 为准。
+- 当前版本：**1.0.2**。源码采用 GPL-3.0-only。
+- [V1.0.2 应用内更新](release-1.0.2.md)：Windows 更新流程、发布文件和实际安装升级验证。
 - [开发与打包说明](../README.md)：启动、测试、构建和项目结构。
-- [正式版下载与校验](https://github.com/Joydivisor/Folio/releases/tag/v1.0.1)：各平台安装包和 SHA-256 清单。
+- [正式版下载与校验](https://github.com/Joydivisor/Folio/releases/tag/v1.0.2)：各平台安装包和 SHA-256 清单。
 - [V1.0.1 下载入口迁移](release-1.0.1.md)：统一主仓库与旧版手动升级说明。
 - [V1.0.0 发布与重启修复](release-1.0.0.md)：启动恢复、验证方式与开源说明。
 - [beta.10 实施与验收](beta10-plan.md)：连续阅读、自然图文、通用 Anatomy 与本地构建。
@@ -18,7 +19,8 @@
 | 启动网页 / 桌面版 | `npm start` / `npm run desktop` |
 | 源码检查 / 自动测试 | `npm run check` / `npm test` |
 | 构建 Windows 程序 / 安装器 | `npm run package:win` / `npm run installer:win` |
-| 打包 Windows 内测 ZIP | `python scripts/package-windows-test-zip.py` |
+| 验证 Windows 应用内升级 | `node scripts/test-update-install.mjs` |
+| 校验 Windows 发布文件 | `node scripts/finalize-windows-release.mjs` |
 | macOS / Linux 打包 | `.github/workflows/unix-release.yml`，在对应平台构建 |
 | beta.10 连续阅读与画布检查 | `scripts/test-beta10.cjs` |
 | PDF 选择与拖入检查 | `scripts/test-reading-beta9.cjs` |

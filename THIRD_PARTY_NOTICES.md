@@ -15,6 +15,7 @@ copyright notices and licenses. This file does not replace those licenses.
 | KaTeX | MIT and bundled font licenses | https://github.com/KaTeX/KaTeX · `node_modules/katex`. |
 | markdown-it | MIT | https://github.com/markdown-it/markdown-it · `node_modules/markdown-it`. |
 | fflate | MIT | https://github.com/101arrowz/fflate · `node_modules/fflate`. |
+| electron-updater | MIT | https://github.com/electron-userland/electron-builder · `node_modules/electron-updater/LICENSE`. |
 
 Production dependencies and their license files are included in `resources/app.asar`
 (on macOS: `Folio.app/Contents/Resources/app.asar`). The lockfile records the exact

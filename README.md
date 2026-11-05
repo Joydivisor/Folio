@@ -2,28 +2,30 @@
 
 **以本地文献为中心的交互学习台。阅读、做笔记，把难懂的内容变成可以探索的图示。**
 
-[下载 V1.0.1](https://github.com/Joydivisor/Folio/releases/tag/v1.0.1) · [官网](https://getfolio.pages.dev/) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/Joydivisor/Folio/issues) · [English overview](#english-overview)
+[下载 V1.0.2](https://github.com/Joydivisor/Folio/releases/tag/v1.0.2) · [官网](https://getfolio.pages.dev/) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/Joydivisor/Folio/issues) · [English overview](#english-overview)
 
 Folio 将文献阅读与 AI 解释放在同一工作区。文献、批注、笔记和阅读位置保存在本机；AI 使用你自己选择的模型服务。不配置 AI 也可以阅读和管理文献。
+
+## V1.0.2
+
+Windows 安装版已加入应用内更新：自动检查稳定版，点击下载后可继续阅读，完成后选择“重启并更新”。文献、笔记和设置保留。macOS 与 Linux 暂时保留手动更新。[发布与验证说明](docs/release-1.0.2.md)。
 
 ## 安装
 
 | 平台 | 安装包 | 安装方式 |
 | --- | --- | --- |
-| Windows 10 / 11 · x64 | [EXE](https://github.com/Joydivisor/Folio/releases/download/v1.0.1/Folio-Setup-1.0.1-win-x64.exe) · [ZIP](https://github.com/Joydivisor/Folio/releases/download/v1.0.1/Folio-Setup-1.0.1-win-x64.zip) | 运行安装程序，选择安装位置和桌面快捷方式；ZIP 需先解压。 |
-| macOS 13+ · Apple Silicon | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.1/Folio-1.0.1-mac-arm64.dmg) | 打开后将 Folio 拖入 Applications。 |
-| macOS 13+ · Intel | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.1/Folio-1.0.1-mac-x64.dmg) | 打开后将 Folio 拖入 Applications。 |
-| Ubuntu 22.04 · x64 | [DEB](https://github.com/Joydivisor/Folio/releases/download/v1.0.1/Folio-1.0.1-linux-x64.deb) | 使用系统软件安装器，或运行下面的命令。 |
+| Windows 10 / 11 · x64 | [EXE](https://github.com/Joydivisor/Folio/releases/download/v1.0.2/Folio-Setup-1.0.2-win-x64.exe) · [ZIP](https://github.com/Joydivisor/Folio/releases/download/v1.0.2/Folio-Setup-1.0.2-win-x64.zip) | 运行安装程序，选择安装位置和桌面快捷方式；ZIP 需先解压。 |
+| macOS 13+ · Apple Silicon | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.2/Folio-1.0.2-mac-arm64.dmg) | 打开后将 Folio 拖入 Applications。 |
+| macOS 13+ · Intel | [DMG](https://github.com/Joydivisor/Folio/releases/download/v1.0.2/Folio-1.0.2-mac-x64.dmg) | 打开后将 Folio 拖入 Applications。 |
+| Ubuntu 22.04 · x64 | [DEB](https://github.com/Joydivisor/Folio/releases/download/v1.0.2/Folio-1.0.2-linux-x64.deb) | 使用系统软件安装器，或运行下面的命令。 |
 
 ```sh
-sudo apt install ./Folio-1.0.1-linux-x64.deb
+sudo apt install ./Folio-1.0.2-linux-x64.deb
 ```
 
-安装包自带运行环境，无需安装 Node.js。其他 Linux 发行版尚未验证。Windows 包尚未签名，macOS 包采用 ad-hoc 签名，未经过 Apple 公证；系统可能显示发布者或验证提示。请核对下载来源与 [SHA-256 校验清单](https://github.com/Joydivisor/Folio/releases/download/v1.0.1/SHA256SUMS.txt)。
+安装包自带运行环境，无需安装 Node.js。其他 Linux 发行版尚未验证。Windows 包尚未签名，macOS 包采用 ad-hoc 签名，未经过 Apple 公证；系统可能显示发布者或验证提示。请核对下载来源与 [SHA-256 校验清单](https://github.com/Joydivisor/Folio/releases/download/v1.0.2/SHA256SUMS.txt)。
 
-更新前退出 Folio：Windows 安装到原位置，macOS 替换应用，Linux 安装新 DEB。已有文献库、笔记和设置会保留。Windows 卸载仅删除程序清单内的文件，保留个人应用数据。
-
-**从 1.0.0 或更早版本升级：** 下载入口已统一到此仓库，原 `Folio-downloads` 转为私有。旧版应用内的更新链接不再可用，请从上表手动下载安装一次；之后的版本检查使用主仓库。
+Windows 安装版可在“帮助 → 检查更新”中下载更新，然后选择“重启并更新”。macOS 更新前退出 Folio 再替换应用，Linux 安装新 DEB。已有文献库、笔记和设置会保留。Windows 卸载保留个人应用数据。
 
 ## 可以做什么
 
@@ -82,7 +84,7 @@ npm run package:win
 npm run installer:win
 ```
 
-安装器需要 [NSIS 3.13](https://nsis.sourceforge.io/Download)：将便携编译器放入 `.installer-cache/nsis-3.13/`，或设置 `NSIS_EXE` 指向 `makensis.exe`。程序输出到 `dist/v1.0.1/Folio-win32-x64/`，安装器输出到 `releases/Folio-Setup-1.0.1-win-x64.exe`。
+安装器使用 `electron-builder` 的 NSIS 目标，首次构建会下载并校验配套工具，缓存于 `.installer-cache/electron-builder/`。程序输出到 `dist/v1.0.2/Folio-win32-x64/`；安装器、差分文件和更新清单输出到 `releases/v1.0.2/`。运行 `node scripts/test-update-install.mjs` 验证实际升级，再运行 `node scripts/finalize-windows-release.mjs` 生成校验清单。
 
 macOS / Linux 在对应平台执行 `npm run package:unix`。仓库中的 [跨平台工作流](.github/workflows/unix-release.yml) 会构建 DMG / DEB 并执行原生启动检查；它不会生成 Apple Developer ID 签名或公证。
 

@@ -3,6 +3,15 @@ contextBridge.exposeInMainWorld('folioDesktop', {
   platform: process.platform,
   finishLibraryRestore: () => ipcRenderer.invoke('folio:library-restored'),
   openDownload:url=>ipcRenderer.invoke('folio:open-download',url),
+  updateState: () => ipcRenderer.invoke('folio:update-state'),
+  checkUpdate: () => ipcRenderer.invoke('folio:update-check'),
+  downloadUpdate: () => ipcRenderer.invoke('folio:update-download'),
+  installUpdate: () => ipcRenderer.invoke('folio:update-install'),
+  onUpdateState(callback) {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('folio:update-state', listener);
+    return () => ipcRenderer.removeListener('folio:update-state', listener);
+  },
   setLanguage: language => ipcRenderer.invoke('folio:language', language),
   windowCommand: command => ipcRenderer.invoke('folio:window-command', command),
   editCommand: command => ipcRenderer.invoke('folio:edit-command', command),
