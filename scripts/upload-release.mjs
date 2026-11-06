@@ -6,46 +6,9 @@ import {promisify} from 'node:util';
 import {parseArgs} from 'node:util';
 import {pathToFileURL} from 'node:url';
 
-export function assertDraft(release, tag) {
-  if (release.tag_name !== tag || release.draft !== true) throw Error('Uploads require an existing draft for ' + tag + '; published releases are never modified.');
-}
-
-export function assetState(release, file) {
-  const asset = release.assets.find(asset => asset.name === file.name);
-  if (!asset) return 'missing';
-  if (asset.state === 'uploaded' && asset.size === file.size && asset.digest === 'sha256:' + file.sha256) return 'same';
-  throw Error('Existing draft asset differs or is incomplete: ' + file.name + '. No asset was overwritten.');
-}
-
-// Re-read metadata after an interrupted upload: the server may already have the file.
-export async function syncDraftAssets({tag, version, files, getRelease, upload, wait = ms => new Promise(resolve => setTimeout(resolve, ms))}) {
-  if (tag !== 'v' + version) throw Error('Release tag must match package.json version.');
-  assertDraft(await getRelease(), tag);
-  const results = [];
-  for (const file of files) {
-    if (!file.name || !Number.isSafeInteger(file.size) || file.size < 1 || !/^[a-f0-9]{64}$/.test(file.sha256)) throw Error('Invalid local release asset.');
-    let attempted = false, lastError;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const release = await getRelease();
-      assertDraft(release, tag);
-      if (assetState(release, file) === 'same') {
-        results.push({name: file.name, bytes: file.size, sha256: file.sha256, status: attempted ? 'uploaded' : 'skipped'});
-        break;
-      }
-      attempted = true;
-      try { await upload(file); } catch (error) { lastError = error; }
-      const verified = await getRelease();
-      assertDraft(verified, tag);
-      if (assetState(verified, file) === 'same') {
-        results.push({name: file.name, bytes: file.size, sha256: file.sha256, status: 'uploaded'});
-        break;
-      }
-      if (attempt === 2) throw Error('Upload could not be verified: ' + file.name, {cause: lastError});
-      await wait(1000 * 2 ** attempt);
-    }
-  }
-  return {files: results, uploadedBytes: results.filter(f => f.status === 'uploaded').reduce((sum, f) => sum + f.bytes, 0), skippedBytes: results.filter(f => f.status === 'skipped').reduce((sum, f) => sum + f.bytes, 0)};
-}
+import {assertDraft, assetState, syncDraftAssets} from './release-assets.mjs';
+export {syncDraftAssets} from './release-assets.mjs';
+import {checkDraftUpload, uploadTimeoutMs} from './release-preflight.mjs';
 
 async function main() {
   const {values, positionals} = parseArgs({options: {tag: {type: 'string'}, repo: {type: 'string'}, check: {type: 'boolean'}}, allowPositionals: true});
@@ -54,7 +17,6 @@ async function main() {
   const repo = values.repo || process.env.GITHUB_REPOSITORY;
   if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || tag !== 'v' + version) throw Error('Set --repo owner/repo and --tag matching package.json.');
   const run = promisify(execFile);
-  const {checkDraftUpload, uploadTimeoutMs} = await import('./release-preflight.mjs');
   const log = text => console.log(new Date().toISOString() + ' ' + text);
   const gh = async (args, {timeout = 25000, retryRead = false, label} = {}) => {
     for (let attempt = 1; attempt <= (retryRead ? 3 : 1); attempt++) {
@@ -111,7 +73,9 @@ async function main() {
     throw error;
   } finally {fs.unlinkSync(probePath);}
   log('Upload check passed: ' + preflight.probeSeconds + 's for 1 MiB, ' + preflight.pendingBytes + ' bytes pending; probe removed.');
+  if (preflight.recommendedRoute === 'ci') log('Slow channel: use the release workflows to build and upload on GitHub runners.');
   if (values.check) return;
+  if (preflight.recommendedRoute === 'ci') throw Error('Upload preflight detected a slow channel; no installer was sent. Use windows-release.yml / unix-release.yml with this release_tag, or resolve the connection and rerun the check.');
   const started = performance.now();
   const result = await syncDraftAssets({tag, version, files, getRelease, upload: async file => {
     log('Uploading ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MiB).');

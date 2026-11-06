@@ -1,4 +1,4 @@
-import {assertDraft, assetState, syncDraftAssets} from './upload-release.mjs';
+import {assertDraft, assetState, syncDraftAssets} from './release-assets.mjs';
 
 // A bounded transfer on the same endpoint catches auth, connectivity and stalled
 // upload failures before sending an installer. Every invocation owns one unique probe.
@@ -17,7 +17,7 @@ export async function checkDraftUpload({tag, version, files, probe, getRelease, 
   try {
     await syncDraftAssets({tag, version, files: [probe], getRelease, upload, wait});
     const seconds = Math.max(.001, (now() - started) / 1000);
-    result = {passed: true, pendingBytes, skippedBytes, probeBytes: probe.size, probeSeconds: Number(seconds.toFixed(2)), bytesPerSecond: Math.round(probe.size / seconds)};
+    result = {passed: true, pendingBytes, skippedBytes, probeBytes: probe.size, probeSeconds: Number(seconds.toFixed(2)), bytesPerSecond: Math.round(probe.size / seconds), recommendedRoute: pendingBytes >= 50 * 1024 * 1024 && seconds >= 15 ? 'ci' : 'current'};
   } catch (error) {failure = error;}
   // Even a failed transfer can leave a starter asset. Only this invocation's
   // unguessable probe is eligible for cleanup, never a release binary.

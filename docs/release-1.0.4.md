@@ -38,7 +38,7 @@
 ## 验证
 
 - `npm run check`：全量语法检查。
-- `npm test`：151 项通过（包括格式、旧分页兼容、命令、OCR 缓存升级、置换复合快照一致性与上传通道检查）。
+- `npm test`：152 项通过（包括格式、旧分页兼容、命令、OCR 缓存升级、置换复合快照一致性与上传通道检查）。
 - `npm run test:v104-polish`：真实 Chromium 鼠标点击；检查菜单反复开关、紧凑与拖入尺寸、8 个部件对应、公式、笔记保存重启恢复、编辑撤销重做，以及关系图/几何/导出列/置换/步骤/比较表。记录为 `tests/reports/v104-polish/result.json`。
 - `npm run test:v104`：隔离 Electron 用户目录、合成 DOCX 和图片 PDF、固定模型响应；实际运行本地英/中文 OCR，不调用付费 API。
 - `node scripts/test-library-restart.cjs`：真实 Electron 进程重启、文件夹恢复、权限与离线目录保留，已通过。

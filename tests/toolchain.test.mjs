@@ -118,3 +118,8 @@ test('upload timeout accounts for probe speed with finite bounds', () => {
   assert.equal(uploadTimeoutMs(100000000, 1000000), 260000);
   assert.equal(uploadTimeoutMs(1000000000, 1), 900000);
 });
+test('a slow local probe redirects a large transfer before sending an installer', async () => {
+  let assets = [], elapsed = 0;
+  const result = await checkDraftUpload({...options, files: [{...local, size: 190000000}], probe, now: () => elapsed, getRelease: async () => draft(assets), upload: async f => {assert.equal(f.name, probe.name);assets = [probeAsset];elapsed = 23000;}, remove: async () => {assets = [];}});
+  assert.equal(result.recommendedRoute, 'ci');assert.deepEqual(assets, []);
+});
