@@ -1,13 +1,15 @@
+import {mountNoteArtifact} from './note-artifact.js';
 import {language} from './i18n.js';
 import {noteRoute,noteTrail} from './conversations.js';
 import {ui,node,button} from './workspace-ui.js';
 import {noteTitle,noteBody} from './note-markdown.js';
 import {renderNoteMarkdown,mountNoteEditor,exportNotesMarkdown} from './note-renderer.js';
 import {documentKey,groupNotes,notesInScope,sourceEntry,sourceScopeRoute} from './library-organization.js';
-export function setupNotebook({notes,entries,documents=()=>[],collections=()=>[],items:libraryItems=()=>[],onOpenSource,onRestoreArtifact,onChanged,renderMath,onMemoryChange,memoryEnabled,getRegion}){
+export function setupNotebook({notes,entries,documents=()=>[],collections=()=>[],items:libraryItems=()=>[],onOpenSource,onRestoreArtifact,onChanged,onArtifactChanged=onChanged,renderMath,onMemoryChange,memoryEnabled,getRegion}){
  const displayTrail=note=>noteTrail(note).map((part,index)=>language()==='en'?(index===0?'Notes':index===2?part.replace(/^第 (\d+) 页$/,'Page $1'):part):part);
- const $=id=>document.getElementById(id);let selected=null,revision=0,scope={kind:'all'};
+ const $=id=>document.getElementById(id);let selected=null,revision=0,scope={kind:'all'},disposePreview=()=>{};
  function render(){
+  disposePreview();disposePreview=()=>{};
   const token=++revision;$('globalNoteCount').textContent=notes.length;$('autoRemember').checked=memoryEnabled();
   const docs=documents();if(scope.kind==='document'&&scope.id!=='unlinked')scope.id=documentKey({id:scope.id},docs)||scope.id;const allGroups=groupNotes(notes,entries(),docs),tree=$('noteSourceTree');tree.replaceChildren();
   for(const group of allGroups){const a=node('a',undefined,{href:sourceScopeRoute('document',group.key),className:'note-source-link'});a.dataset.noteSource=group.key;a.classList.toggle('active',scope.kind==='document'&&scope.id===group.key);const label=node('span',undefined,{className:'note-source-name'});label.append(node('span',group.key==='unlinked'?ui('未关联文献','Unlinked notes'):group.name));if(group.path&&allGroups.filter(g=>g.name===group.name).length>1)label.append(node('small',group.path));a.append(label,node('small',String(group.notes.length)));a.title=[group.name,group.path].filter(Boolean).join(' · ');tree.append(a);}
@@ -25,8 +27,8 @@ export function setupNotebook({notes,entries,documents=()=>[],collections=()=>[]
   const title=node('h2',noteTitle(note)),meta=node('p',note.date,{className:'note-date'}),actions=node('div',undefined,{className:'notebook-actions'}),content=node('div',undefined,{className:'notebook-prose'});
   if(['permutation-state','folio-artifact'].includes(note.artifact?.kind)&&onRestoreArtifact)actions.append(button(ui('恢复交互','Restore interaction'),()=>onRestoreArtifact(note)));
   if(note.source?.id||note.source?.documentId){const exists=sourceEntry(note.source,entries(),docs);actions.append(button(exists?ui('原文 ↗','Source ↗'):ui('重新连接原文','Reconnect source'),()=>onOpenSource(note)));}
-  actions.append(button(ui('导出 Markdown','Export Markdown'),()=>exportNotesMarkdown([note],getRegion)),button(ui('编辑','Edit'),()=>{detail.replaceChildren(breadcrumb);mountNoteEditor(detail,note,{renderMath,onCancel:render,onSave:changes=>{Object.assign(note,changes);onChanged();render();}});}),button(ui('删除','Delete'),()=>{const index=notes.findIndex(n=>n.id===note.id);if(index<0)return;notes.splice(index,1);onChanged();render();}));
-  detail.append(breadcrumb,title,meta,actions,content);renderNoteMarkdown(content,noteBody(note),renderMath);
+  actions.append(button(ui('导出 Markdown','Export Markdown'),()=>exportNotesMarkdown([note],getRegion)),button(ui('编辑','Edit'),()=>{disposePreview();detail.replaceChildren(breadcrumb);mountNoteEditor(detail,note,{renderMath,onCancel:render,onSave:changes=>{Object.assign(note,changes);onChanged();render();}});}),button(ui('删除','Delete'),()=>{const index=notes.findIndex(n=>n.id===note.id);if(index<0)return;notes.splice(index,1);onChanged();render();}));
+  detail.append(breadcrumb,title,meta,actions,content);renderNoteMarkdown(content,noteBody(note),renderMath);disposePreview=mountNoteArtifact(detail,note,{renderMath,onChanged:onArtifactChanged,open:true});
   if(note.source?.regionId&&getRegion)getRegion(note.source.regionId).then(region=>{if(region&&token===revision){const figure=node('figure',undefined,{className:'note-source-figure'});figure.append(node('img',undefined,{src:region.image,alt:ui('原文选区','Source region')}));content.after(figure);}}).catch(()=>{});
   if(note.source?.text){const quote=node('details'),text=node('div',undefined,{className:'notebook-prose'});quote.append(node('summary',ui('引用原文','Source excerpt')),text);renderNoteMarkdown(text,note.source.text,renderMath);detail.append(quote);}
   if(note.turns?.length){const turns=node('details');turns.append(node('summary',ui('完整对话','Conversation')+' · '+note.turns.length));for(const [i,t]of note.turns.entries()){const section=node('section'),text=node('div',undefined,{className:'notebook-prose'});section.append(node('h3',(i+1)+'. '+t.question),text);renderNoteMarkdown(text,t.answer.paragraphs.map(p=>p.text+(p.sources?.length?'\n\n'+p.sources.map(s=>'> '+ui('第 '+s.page+' 页','Page '+s.page)+': '+s.quote.replace(/\n/g,'\n> ')).join('\n'):'')).join('\n\n'),renderMath);turns.append(section);}detail.append(turns);}

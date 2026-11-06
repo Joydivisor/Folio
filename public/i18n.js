@@ -257,7 +257,7 @@ DeepSeek 官方模型文档 ↗|DeepSeek model documentation ↗
 ↺ 回到恒等置换|Reset to the identity
 选择对称群|Choose a symmetric group
 展开 AI 辅助|Show AI panel
-支持 PDF、TXT、Markdown|Supports PDF, TXT and Markdown
+支持 PDF、DOCX、TXT、Markdown|Supports PDF, DOCX, TXT and Markdown
 `.trim().split('\n').map(line=>line.split('|')));
 export function resolveLanguage(choice, system='en'){return choice==='en'?'en':choice==='zh-CN'?'zh-CN':/^zh\b/i.test(system)?'zh-CN':'en';}
 export function translate(text,lang){return lang==='en'?(dictionary[text]??text):text;}

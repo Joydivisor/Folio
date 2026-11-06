@@ -4,7 +4,10 @@ import {permutationPower,validatePermutationSnapshot} from './permutation-state.
 const colors=['#648bcc','#c58a57','#4c9b89','#a07aba','#bc6d88','#6c9c55','#ad984d','#749baa'];
 export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
  let plan={...original},state=identity(plan.n),steps=0,trace=null,stage=0,productName='',edited=false;
- if(saved){const valid=validatePermutationSnapshot(saved);plan=valid.plan;state=valid.state;steps=valid.steps;}
+ if(saved){const valid=validatePermutationSnapshot(saved);plan={...valid.plan,object:original.object};state=valid.state;steps=valid.steps;edited=valid.customParameters===true;}
+ if(saved?.composition){productName=saved.composition.product;stage=saved.composition.stage;const [a,b]=productName==='στ'?[plan.sigma,plan.tau]:[plan.tau,plan.sigma];trace=compositionTrace(a,b,plan.order);}
+ const arrowPrefix='permutation-'+crypto.randomUUID()+'-';
+ const snapshot=()=>({kind:'permutation-state',version:1,plan:structuredClone(plan),state:[...state],steps,...(edited?{customParameters:true}:{}),...(trace?{composition:{product:productName,stage}}:{})});
  let timer=null,power=0;
  host.innerHTML=`<div class="visual-heading"><h2></h2><p></p></div>
  <div class="permutation-diagram"></div><div class="artifact-legend"></div><div class="operation-row"></div><div class="compare-grid" style="margin-top:12px"></div>
@@ -17,7 +20,7 @@ export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
  const q=s=>host.querySelector(s), form=q('form');
  function stop(){clearInterval(timer);timer=null;const button=q('.power-play');if(button)button.textContent='播放一个周期';}
  function controls(){
-  q('h2').textContent=edited?'自定义置换 · '+plan.n+' 个元素':plan.object;
+  q('h2').textContent=plan.object;
   q('.visual-heading p').textContent='σ = '+cycles(plan.sigma)+(plan.tau?'，τ = '+cycles(plan.tau):'')+'。'+(plan.order==='right-first'?'复合时右侧先作用。':'复合时左侧先作用。');
   q('.artifact-legend').innerHTML=state.map((_,i)=>'<span style="--item-color:'+colors[i]+'"><i></i>元素 '+(i+1)+'</span>').join('');
   q('.operation-row').replaceChildren();q('.compare-grid').replaceChildren();
@@ -34,7 +37,7 @@ export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
  }
  function showStep(){state=[trace.initial,trace.intermediate,trace.result][stage];steps=stage;render();}
  function render(){
-  onState({kind:'permutation-state',version:1,plan:structuredClone(plan),state:[...state],steps});
+  onState(snapshot());
   const period=permutationFacts(plan.sigma).order;
   const candidates=[...(steps<=period?[steps]:[]),...Array.from({length:period+1},(_,i)=>i)];
   const exponent=candidates.find(k=>permutationPower(plan.sigma,k).every((v,i)=>v===state[i]));
@@ -42,7 +45,7 @@ export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
   q('.power-label').textContent=exponent===undefined?'当前为复合结果':'σ^'+exponent+' = '+cycles(state);
   q('.permutation-orbit').querySelectorAll('span').forEach((dot,i)=>dot.style.left=`calc(${state[i]*100/(plan.n-1)}% + ${16-state[i]*32/(plan.n-1)}px)`);
   const x=i=>30+i*330/(plan.n-1),label=state.map((v,i)=>(i+1)+' 映到 '+(v+1)).join('，');
-  q('.permutation-diagram').innerHTML='<svg viewBox="0 0 390 195" class="perm-svg" role="img" aria-label="'+label+'"><defs>'+state.map((_,i)=>'<marker id="dynamicArrow'+i+'" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="'+colors[i]+'"/></marker>').join('')+'</defs>'+state.map((v,i)=>'<path class="mapping-line" d="M'+x(i)+' 45 C'+x(i)+' 86 '+x(v)+' 106 '+x(v)+' 146" stroke="'+colors[i]+'" stroke-width="2" opacity=".8" fill="none" marker-end="url(#dynamicArrow'+i+')"/>').join('')+state.map((_,i)=>'<circle cx="'+x(i)+'" cy="27" r="16" fill="'+colors[i]+'"/><text x="'+x(i)+'" y="32" text-anchor="middle" fill="white" font-size="13">'+(i+1)+'</text><circle cx="'+x(i)+'" cy="169" r="16" fill="none" stroke="'+colors[state.indexOf(i)]+'" stroke-width="1.5"/><text x="'+x(i)+'" y="174" text-anchor="middle" fill="var(--text)" font-size="13">'+(i+1)+'</text>').join('')+'</svg>';
+  q('.permutation-diagram').innerHTML='<svg viewBox="0 0 390 195" class="perm-svg" role="img" aria-label="'+label+'"><defs>'+state.map((_,i)=>'<marker id="'+arrowPrefix+i+'" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="'+colors[i]+'"/></marker>').join('')+'</defs>'+state.map((v,i)=>'<path class="mapping-line" d="M'+x(i)+' 45 C'+x(i)+' 86 '+x(v)+' 106 '+x(v)+' 146" stroke="'+colors[i]+'" stroke-width="2" opacity=".8" fill="none" marker-end="url(#'+arrowPrefix+i+')"/>').join('')+state.map((_,i)=>'<circle cx="'+x(i)+'" cy="27" r="16" fill="'+colors[i]+'"/><text x="'+x(i)+'" y="32" text-anchor="middle" fill="white" font-size="13">'+(i+1)+'</text><circle cx="'+x(i)+'" cy="169" r="16" fill="none" stroke="'+colors[state.indexOf(i)]+'" stroke-width="1.5"/><text x="'+x(i)+'" y="174" text-anchor="middle" fill="var(--text)" font-size="13">'+(i+1)+'</text>').join('')+'</svg>';
   q('.math-result').textContent=(trace&&stage===2?productName+' = ':'')+cycles(state)+' · '+steps+' 次作用';
   const facts=permutationFacts(state);
   q('.artifact-metrics').innerHTML='<div><small>置换的阶</small><strong>'+facts.order+'</strong></div><div><small>奇偶性</small><strong>'+(facts.even?'偶置换':'奇置换')+'</strong></div><div><small>不动点</small><strong>'+(facts.fixed.join(', ')||'无')+'</strong></div>';
@@ -60,8 +63,8 @@ export function mountPermutation(host, original, onSave, saved, onState=()=>{}){
  function showPower(){trace=null;state=permutationPower(plan.sigma,power);steps=power;q('.power-slider').value=power;q('.power-label').textContent='σ^'+power+' = '+cycles(state);render();}
  q('.power-slider').oninput=e=>{stop();power=Number(e.target.value);showPower();};
  q('.power-play').onclick=()=>{if(timer){stop();return;}power=0;showPower();q('.power-play').textContent='暂停';timer=setInterval(()=>{power++;showPower();if(power>=Number(q('.power-slider').max))stop();},800);};
- form.onsubmit=e=>{e.preventDefault();stop();try{const sigma=mappingInput(form.elements.sigma.value),tau=form.elements.tau.value.trim()?mappingInput(form.elements.tau.value,sigma.length):undefined;plan={...plan,n:sigma.length,sigma,tau,order:form.elements.leftFirst.checked?'left-first':'right-first'};trace=null;steps=0;state=identity(plan.n);edited=true;controls();render();q('.parameter-error').textContent='';}catch(error){q('.parameter-error').textContent=error.message;}};
- q('.permutation-save').onclick=()=>onSave(q('h2').textContent+'\n'+q('.visual-heading p').textContent+'\n'+(trace&&stage<2?'复合预览 · 第 '+stage+' 步\n':'')+'当前结果：'+cycles(state)+'\n'+state.map((v,i)=>(i+1)+' ↦ '+(v+1)).join('，'),validatePermutationSnapshot({kind:'permutation-state',version:1,plan,state,steps}));
+ form.onsubmit=e=>{e.preventDefault();stop();try{const sigma=mappingInput(form.elements.sigma.value),tau=form.elements.tau.value.trim()?mappingInput(form.elements.tau.value,sigma.length):undefined;plan={...plan,object:'自定义置换 · '+sigma.length+' 个元素',verification:undefined,n:sigma.length,sigma,tau,order:form.elements.leftFirst.checked?'left-first':'right-first'};trace=null;steps=0;state=identity(plan.n);edited=true;controls();render();q('.parameter-error').textContent='';}catch(error){q('.parameter-error').textContent=error.message;}};
+ q('.permutation-save').onclick=()=>onSave(q('h2').textContent+'\n'+q('.visual-heading p').textContent+'\n'+(trace&&stage<2?'复合预览 · 第 '+stage+' 步\n':'')+'当前结果：'+cycles(state)+'\n'+state.map((v,i)=>(i+1)+' ↦ '+(v+1)).join('，'),validatePermutationSnapshot(snapshot()));
  controls();render();
  return stop;
 }

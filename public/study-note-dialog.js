@@ -1,3 +1,4 @@
+import {hasPresentation} from './learning-actions.js';
 import {ui,node,button,modal} from './workspace-ui.js';
 import {renderNoteMarkdown,validateNoteMath} from './note-renderer.js';
 import {originalStudyNote,requestStudyNote,parseStudyNote} from './study-note.js';
@@ -12,6 +13,7 @@ export function openStudyNote(record,{ask,answerLanguage,renderMath,onSave}){
  title.setAttribute('aria-label',ui('笔记标题','Note title'));editor.setAttribute('aria-label',ui('Markdown 正文','Markdown body'));status.setAttribute('role','status');
  const source=record.source||{};
  body.append(node('p',(source.name||ui('外部选段','External passage'))+(source.page?' · '+ui('第 '+source.page+' 页','Page '+source.page):''),{className:'study-note-source'}),title,status,preview,editor,actions);
+ if(hasPresentation(record.versions[record.cursor]))status.before(node('p',ui('交互图示、参数和当前选中内容将一并保存，可在笔记中继续操作。','The interactive illustration, parameters and selection will be saved with the note.'),{className:'study-note-source'}));
  let busy=false,closed=false;
  root.addEventListener('close',()=>closed=true);
  const draw=()=>renderNoteMarkdown(preview,editor.value,renderMath);

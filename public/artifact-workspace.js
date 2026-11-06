@@ -10,7 +10,7 @@ import {icon} from './icons.js';
 export function createArtifactWorkspace({store,host,render,onSave,onSource,onOpen,onRequestView,onExpand,renderMath=()=>{}}){
  let active=null,cleanup=null,timer=null,renderId=0;
  async function persist(){if(active)await store.put('artifacts',active);}
- function state(value){if(!active)return;active.versions[active.cursor].interaction=structuredClone(value);clearTimeout(timer);const record=structuredClone(active);timer=setTimeout(()=>store.put('artifacts',record).catch(console.error),300);}
+ function state(value){if(!active)return;active.versions[active.cursor].interaction=structuredClone(value);if(active.versions[active.cursor].plan.kind==='permutation'&&value.kind==='permutation-state')active.versions[active.cursor].plan=structuredClone(value.plan);clearTimeout(timer);const record=structuredClone(active);timer=setTimeout(()=>store.put('artifacts',record).catch(console.error),300);}
  async function show(record){cleanup?.();cleanup=null;clearTimeout(timer);active=structuredClone(record);const token=++renderId,version=currentVersion(active);host.replaceChildren();const toolbar=node('div',undefined,{className:'artifact-toolbar'}),stage=node('div',undefined,{className:'artifact-content'});host.append(toolbar,stage);
   const actions=node('div',undefined,{className:'artifact-primary-actions'});
   const saveNote=button(ui('存为笔记','Save to notes'),async()=>{await persist();await onSave(structuredClone(active));}),source=button(ui('原文 ↗','Source ↗'),()=>onSource(active.source)),more=button('···',options);more.title=ui('更多选项','More options');more.setAttribute('aria-label',more.title);more.className='artifact-more';source.hidden=!active.source?.id&&!active.source?.documentId;

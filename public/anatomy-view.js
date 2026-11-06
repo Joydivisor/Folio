@@ -1,19 +1,53 @@
 import * as k from './vendor/anatomy/iso-kit.mjs';
 import {parseAnatomy,anatomyPositions} from './anatomy-plan.js';
 import {node,button,ui} from './workspace-ui.js';
-export function mountAnatomy(host,plan,{saved={},onState=()=>{}}={}){
- const scene=parseAnatomy(plan.scene),root=node('section',undefined,{className:'anatomy-view iso'}),style=node('style',k.ISO_CSS),stage=node('div'),controls=node('div',undefined,{className:'anatomy-controls'}),detail=node('p',scene.caption,{className:'anatomy-caption'}),parts=node('div',undefined,{className:'anatomy-parts'});
+import {normalizeLatex} from './note-markdown.js';
+
+// Fixed, validated colors: the same swatch is used by a part, its number and its control.
+const palette=['#5685c4','#2f9382','#b88838','#956ab4','#bf7088','#638d43','#5c93a4','#b97546'];
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function mountAnatomy(host,plan,{saved={},onState=()=>{},renderMath=()=>{}}={}){
+ const scene=parseAnatomy(plan.scene),root=node('section',undefined,{className:'anatomy-view iso'}),style=node('style',k.ISO_CSS),stage=node('div',undefined,{className:'anatomy-stage'}),controls=node('div',undefined,{className:'anatomy-controls'}),detail=node('div',undefined,{className:'anatomy-caption'}),parts=node('div',undefined,{className:'anatomy-parts'});
  const values=Object.fromEntries(scene.controls.map(c=>[c.id,Number.isFinite(saved.values?.[c.id])?Math.max(c.min,Math.min(c.max,saved.values[c.id])):c.value]));
- root.append(style,node('h2',plan.object),stage,detail,controls,parts);host.append(root);
+ let selected=scene.parts.some(p=>p.id===saved.selected)?saved.selected:null;
+ const index=new Map(scene.parts.map((p,i)=>[p.id,i])),color=p=>palette[index.get(p.id)%palette.length];
+ detail.setAttribute('aria-live','polite');parts.setAttribute('aria-label',ui('选择图中部件','Select an illustrated part'));
+ const title=node('h2',normalizeLatex(plan.object));renderMath(title);root.append(style,title,stage,controls,parts,detail);host.append(root);
  // Fit all endpoint poses once; slider movement never changes the camera scale.
  const corners=[];for(const p of scene.parts){const c=scene.controls.find(c=>c.id===p.motion?.control);for(const value of c?[c.min,c.max]:[0]){const pos=p.position.map((x,i)=>x+(p.motion?p.motion.translate[i]*value:0)),radius=p.type==='box'?0:p.size[0]/2;corners.push(...k.boxCorners({x:pos[0]-radius,y:pos[1]-radius,w:p.type==='box'?p.size[0]:radius*2,d:p.type==='box'?p.size[1]:radius*2},pos[2],pos[2]+p.size[2]));}}
- const P=k.fitProjection(corners,640,400,{pad:30});
- function draw(){root.dataset.theme=document.documentElement.dataset.theme==='dark'?'dark':'light';const shapes=anatomyPositions(scene,values).sort((a,b)=>k.depthOf(a.position,P)-k.depthOf(b.position,P));
-  const body=shapes.map(p=>{const [x,y,z]=p.position,[w,d,h]=p.size;if(p.type==='spring')return k.lineSvg(k.pathOf(Array.from({length:Math.ceil(p.turns*16)+1},(_,i)=>{const t=i/Math.ceil(p.turns*16),a=t*p.turns*2*Math.PI;return k.iso([x+w/2*Math.cos(a),y+w/2*Math.sin(a),z+h*t],P);})),{tone:p.tone});const paths=p.type==='box'?k.slabOf({x,y,w,d,r:Math.min(2,w/8,d/8)},z,h,P,8,.5):k.cylinder(x,y,w/2,z,h,P,32,.5);return k.solidSvg(paths,{tone:p.tone,lit:p.tone==='hi'});}).join('');
-  // All markup comes from the trusted kit with finite numeric arguments, never model HTML.
-  stage.innerHTML=k.figureSvg({width:640,height:400,label:plan.object,body});onState({values:{...values}});
+ const P=k.fitProjection(corners,540,316,{pad:22});
+ const report=()=>onState({values:{...values},selected});
+ function describe(){
+  const p=scene.parts.find(p=>p.id===selected);detail.replaceChildren();
+  if(p){detail.append(node('strong',normalizeLatex((index.get(p.id)+1)+'. '+p.label)));if(p.detail)detail.append(node('p',normalizeLatex(p.detail)));}
+  else detail.append(node('p',normalizeLatex(scene.caption)));
+  renderMath(detail);
+  root.classList.toggle('has-selection',!!selected);
+  for(const el of root.querySelectorAll('[data-part]')){const active=el.dataset.part===selected;el.classList.toggle('selected',active);el.setAttribute('aria-pressed',String(active));}
+  parts.querySelector('[data-overview]').setAttribute('aria-pressed',String(!selected));
+  for(const label of controls.children)label.classList.toggle('is-related',!!p?.motion&&p.motion.control===label.dataset.control);
  }
- for(const c of scene.controls){const label=node('label'),output=node('output'),slider=node('input',undefined,{type:'range',min:String(c.min),max:String(c.max),step:String((c.max-c.min)/200),value:String(values[c.id])});slider.setAttribute('aria-label',c.label);const update=()=>{output.textContent=Number(values[c.id].toFixed(2))+' '+c.unit;};label.append(node('span',c.label),output,slider);slider.oninput=()=>{values[c.id]=Number(slider.value);update();draw();};update();controls.append(label);}
- for(const p of scene.parts)parts.append(button(p.label,()=>{detail.textContent=p.label+(p.detail?'：'+p.detail:'');}));parts.append(button(ui('说明','Description'),()=>detail.textContent=scene.caption));
- const observer=new MutationObserver(draw);observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});draw();return ()=>observer.disconnect();
+ function select(id){selected=id;describe();report();}
+ function bindShapes(){for(const el of stage.querySelectorAll('[data-part]')){el.onclick=()=>select(el.dataset.part);el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(el.dataset.part);}};}}
+ function draw(){
+  const shapes=anatomyPositions(scene,values).sort((a,b)=>k.depthOf(a.position,P)-k.depthOf(b.position,P));
+  let body=shapes.map(p=>{const [x,y,z]=p.position,[w,d,h]=p.size;let shape;
+   if(p.type==='spring')shape=k.lineSvg(k.pathOf(Array.from({length:Math.ceil(p.turns*16)+1},(_,i)=>{const t=i/Math.ceil(p.turns*16),a=t*p.turns*2*Math.PI;return k.iso([x+w/2*Math.cos(a),y+w/2*Math.sin(a),z+h*t],P);})),{tone:p.tone});
+   else{const paths=p.type==='box'?k.slabOf({x,y,w,d,r:Math.min(2,w/8,d/8)},z,h,P,8,.5):k.cylinder(x,y,w/2,z,h,P,32,.5);shape=k.solidSvg(paths,{tone:p.tone});}
+   return '<g class="anatomy-part" data-part="'+p.id+'" style="--part-color:'+color(p)+'" tabindex="0" role="button" aria-label="'+escape((index.get(p.id)+1)+'. '+p.label)+'"><title>'+escape(p.label)+'</title>'+shape+'</g>';
+  }).join('');
+  // Callout numbers stay legible even when thin stacked parts overlap.
+  const anchors=shapes.map(p=>({p,point:k.iso(p.type==='box'?[p.position[0]+p.size[0],p.position[1]+p.size[1]/2,p.position[2]+p.size[2]/2]:[p.position[0]+p.size[0]/2,p.position[1],p.position[2]+p.size[2]/2],P)})).sort((a,b)=>a.point[1]-b.point[1]);
+  if(anchors.length<=14)anchors.forEach(({p,point},i)=>{const y=anchors.length===1?158:24+i*268/(anchors.length-1);body+='<g class="anatomy-marker" data-part="'+p.id+'" style="--part-color:'+color(p)+'" tabindex="0" role="button" aria-label="'+escape((index.get(p.id)+1)+'. '+p.label)+'"><path d="M'+point[0]+' '+point[1]+' L550 '+y+' H572"/><circle cx="584" cy="'+y+'" r="11"/><text x="584" y="'+(y+4)+'">'+(index.get(p.id)+1)+'</text></g>';});
+  // All geometry is generated by the trusted kit; labels are escaped and IDs validated.
+  stage.innerHTML=k.figureSvg({width:612,height:316,label:plan.object,body});stage.firstElementChild.setAttribute('role','group');bindShapes();describe();report();
+ }
+ for(const c of scene.controls){
+  const label=node('label'),output=node('output'),name=node('span',normalizeLatex(c.label)),slider=node('input',undefined,{type:'range',min:String(c.min),max:String(c.max),step:String((c.max-c.min)/200),value:String(values[c.id])});label.dataset.control=c.id;slider.setAttribute('aria-label',c.label);
+  const ids=scene.parts.filter(p=>p.motion?.control===c.id).map(p=>index.get(p.id)+1);if(ids.length)name.append(node('small',ui('部件 ','Parts ')+ids.join(', ')));renderMath(name);
+  const update=()=>{output.textContent=Number(values[c.id].toFixed(2))+' '+c.unit;};label.append(name,output,slider);slider.oninput=()=>{values[c.id]=Number(slider.value);update();draw();};update();controls.append(label);
+ }
+ for(const p of scene.parts){const b=button('',()=>select(p.id)),badge=node('span',String(index.get(p.id)+1),{className:'anatomy-swatch'}),name=node('span',normalizeLatex(p.label));b.dataset.part=p.id;b.style.setProperty('--part-color',color(p));b.append(badge,name);renderMath(name);parts.append(b);}
+ const overview=button(ui('总览','Overview'),()=>select(null));overview.dataset.overview='';parts.append(overview);
+ draw();return ()=>{};
 }

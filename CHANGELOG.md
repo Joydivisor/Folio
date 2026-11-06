@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.4 · 2026-11-06
+
+- Import DOCX as readable text, including paragraphs, table cells and common formula expressions; accept `.markdown` files across library import, folder scans, attachments and source relinking. DOCX uses reflow sections, not Word pagination.
+- Automatically recognize image-only PDF pages with bundled English/Chinese OCR. Keep the source image and add a selectable, draggable, annotatable text layer. Cache per revision; offer cancellable whole-book recognition and corrected transcripts.
+- Add a keyboard-accessible `/` output picker without changing automatic output selection. Explicit choices flow through the existing validated renderer and repair path.
+- Separate composer drops from immediate canvas drops. Expand the composer, preserve the draft and existing answer, stage the source quote, and wait for Send.
+
+- Restore the compact idle composer; use a plus menu that preserves the draft and does not close during a click. Keep slash typing and temporary drag expansion.
+- Link anatomy colors, numbered parts, buttons, descriptions and motion controls; render formulas and limit illustration height on short screens.
+- Render saved illustrations interactively inside notes with explicit state save/reset and restart restoration, using the same components as the canvas.
+- Align graph zoom, geometry angles/reset, derived-layer selections, permutation composition snapshots and process navigation with their displayed results. Preserve interaction through compatible edits and undo/redo.
+- Validate seven pages from three real scanned PDFs; enable automatic page segmentation, bounded 300-DPI OCR and Chinese/English recognition. Preserve manual corrections when refreshing old OCR caches.
+- Check the actual upload endpoint before every release transfer, with a verified temporary probe, bounded retries/timeouts and transfer heartbeats.
+
 ## 1.0.2 · 2026-11-05
 
 - Add in-app updates to the installed Windows application: check for a stable release, download with progress, then explicitly restart and install. Background checks do not force a download or restart.

@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Local-first reading workspace with continuous documents, interactive artifacts and model-independent illustrations",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -10,7 +10,9 @@
     "desktop": "node scripts/start-desktop.cjs",
     "package:win": "node scripts/package-desktop.mjs",
     "installer:win": "node scripts/build-installer.mjs",
-    "package:unix": "node scripts/package-unix.mjs"
+    "package:unix": "node scripts/package-unix.mjs",
+    "test:v104": "node scripts/test-v104.cjs",
+    "test:v104-polish": "node scripts/test-v104-polish.cjs"
   },
   "keywords": [],
   "author": "Joydivisor",
@@ -48,5 +50,5 @@
   },
   "productName": "Folio",
   "private": true,
-  "folioRevision": "r1"
+  "folioRevision": "r3"
 }

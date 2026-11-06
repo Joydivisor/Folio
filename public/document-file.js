@@ -19,6 +19,7 @@ export async function readDocumentFile(entry) {
 }
 export function fileReadMessage(error, english=false) {
  const messages = {
+  DocumentFormatError:['无法读取 DOCX。请确认文件未加密且未损坏，或在 Word 中重新另存为 DOCX。','Unable to read DOCX. Check that it is unencrypted and complete, or save a new DOCX copy in Word.'],
   NotAllowedError:['没有获得读取权限，请重新授权文件夹或重新选择这篇文献。','Read access was not granted. Reconnect the folder or select this document again.'],
   SecurityError:['文件访问授权已失效，请重新连接文件夹。','File access has expired. Reconnect the folder.'],
   NotFoundError:['原文件可能已移动或删除，请重新定位文献。','The file may have moved or been deleted. Locate it again.'],

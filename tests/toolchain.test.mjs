@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import {createPackageWithOptions, extractFile} from '@electron/asar';
 import {auditPackage} from '../scripts/audit-package.mjs';
 import {syncDraftAssets} from '../scripts/upload-release.mjs';
+import {checkDraftUpload, uploadTimeoutMs} from '../scripts/release-preflight.mjs';
 import {electronPackageOptions} from '../scripts/electron-cache.mjs';
 
 test('legacy Electron cache is reused only after official checksum validation', async t => {
@@ -86,4 +87,34 @@ test('uploader retries only missing bytes and stops after bounded failures', asy
   uploads = 0;
   await assert.rejects(syncDraftAssets({...options, getRelease: async () => draft([]), upload: async () => {uploads++; throw Error('network');}}), /could not be verified/);
   assert.equal(uploads, 3);
+});
+
+const probe = {name: '_folio-upload-probe-01234567-89ab-cdef-0123-456789abcdef.bin', size: 1024 * 1024, sha256: 'c'.repeat(64)};
+const probeAsset = {...probe, id: 9, state: 'uploaded', digest: 'sha256:' + probe.sha256};
+test('release preflight tests the upload endpoint and cleans only its own probe', async () => {
+  let assets = [remote], elapsed = 0;
+  const result = await checkDraftUpload({...options, probe, now: () => elapsed, getRelease: async () => draft(assets), upload: async f => {assert.equal(f.name, probe.name);assets.push(probeAsset);elapsed = 2000;}, remove: async id => {assert.equal(id, 9);assets = assets.filter(a => a.id !== id);}});
+  assert.equal(result.passed, true);assert.equal(result.bytesPerSecond, 524288);
+  assert.equal(result.skippedBytes, 100);assert.equal(result.pendingBytes, 0);assert.deepEqual(assets, [remote]);
+});
+test('release preflight refuses conflicting real assets before probing', async () => {
+  let uploads = 0;
+  await assert.rejects(checkDraftUpload({...options, probe, getRelease: async () => draft([{...remote, size: 1}]), upload: async () => uploads++}), /No asset was overwritten/);
+  assert.equal(uploads, 0);
+});
+test('release preflight cleans an incomplete probe and stops before installer transfer', async () => {
+  let assets = [remote];
+  await assert.rejects(checkDraftUpload({...options, probe, getRelease: async () => draft(assets), upload: async () => {assets.push({...probeAsset, state: 'starter', size: 0});throw Error('timeout');}, remove: async id => {assets = assets.filter(a => a.id !== id);}}), /channel check failed/);
+  assert.deepEqual(assets, [remote]);
+});
+test('release preflight verifies lost DELETE responses and refuses leftover probes', async () => {
+  let assets = [];
+  const base = {...options, probe, getRelease: async () => draft(assets), upload: async () => {assets = [probeAsset];}};
+  await checkDraftUpload({...base, remove: async () => {assets = [];throw Error('connection lost');}});
+  await assert.rejects(checkDraftUpload({...base, remove: async () => {throw Error('permission denied');}}), /cleanup failed/);
+});
+test('upload timeout accounts for probe speed with finite bounds', () => {
+  assert.equal(uploadTimeoutMs(100, 1000), 120000);
+  assert.equal(uploadTimeoutMs(100000000, 1000000), 260000);
+  assert.equal(uploadTimeoutMs(1000000000, 1), 900000);
 });

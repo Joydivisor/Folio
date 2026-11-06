@@ -29,13 +29,16 @@ GitHub Actions 的 `release_tag` 留空时仅构建验证、保存 CI 附件。�
 node scripts/upload-release.mjs --repo Joydivisor/Folio --tag vNEXT_VERSION releases/Folio-Setup-NEXT_VERSION-win-x64.exe
 ```
 
-把示例版本替换为 `package.json` 的实际版本。脚本不会新建或公开 Release。
+把示例版本替换为 `package.json` 的实际版本。脚本不会新建或公开 Release。加 `--check` 可只检查通道。每次正式上传都会重新检查，无需记忆额外步骤；CI 与本地使用同一入口。
 
 - 上传前读取远端状态，已公开的 Release 立即拒绝。
+- 检查全部本地文件、版本与远端冲突后，用实际附件上传端点发送唯一命名的 1 MiB 临时探针，核对大小与 SHA-256 后删除并确认已删除。探针失败或清理不完整时不开始上传安装包；探针不会删除任何正式附件。
+- 元数据请求有 25 秒超时，对连接重置等临时错误最多尝试三次。探针每次限 60 秒；正式附件按实测速率设定 2–15 分钟上限，每 10 秒报告文件与已用时间，不再无限等待或长时间无反馈。
 - 远端同名文件大小、SHA-256 都相同则跳过；同名但内容不同或不完整时停止，不覆盖、不删除。
 - 网络中断后先读取远端结果；已经上传成功则直接确认，仅对尚不存在的文件重试，最多三次。
-- 结果写入 `dist/v*/release-upload.json`，包含上传和跳过的字节数、文件哈希及耗时。
+- 检查写入 `dist/v*/release-preflight.json`，包含通过状态、探针耗时、速率、待传与跳过字节；正式上传结果写入 `release-upload.json`。CI 独立保留两个报告。探针速率包含 API 开销，是通道检查值，不冒充安装包实际传输速度。
 - 未完成的草稿资产需要维护者核实后处理；脚本不会为了重试自动删除它。
+- Windows ZIP 在 finalize 时以不压缩方式封装同一 EXE，并核对内部安装器哈希。所有平台完成后，根据已核验的远端资产 SHA-256 汇总 `SHA256SUMS.txt`，通过上传脚本显式传入该文件一次；默认上传不抢先发布仅包含 Windows 的清单。
 
 DMG/DEB 已压缩，CI 保存它们时使用 `compression-level: 0`，避免重复压缩。成功传入 Release 草稿的完整包不再额外上传一份 CI 副本；验证报告独立保留。未指定草稿，或草稿上传失败时，仍保留完整 CI 包供检查和恢复。[GitHub 附件压缩说明](https://github.com/actions/upload-artifact#altering-compressions-level-speed-v-size)
 

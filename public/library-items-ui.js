@@ -27,7 +27,7 @@ export function setupLibraryItems({items,entries,documents,onSave,onImport,onOpe
    const add=button(ui('添加','Add'),()=>{for(const id of selected){const e=entries().find(e=>e.id===id);if(e)attachDocument(draft,e,items.filter(i=>i.id!==draft.id),documents());}paint();picker.close();});add.dataset.addAttachments='';b.append(add);
   }
   const existing=button(ui('添加已有文件','Add existing files'),chooseExisting);existing.dataset.chooseAttachment='';
-  const input=node('input',undefined,{type:'file',accept:'.pdf,.txt,.md',multiple:true,hidden:true});input.dataset.importAttachments='';
+  const input=node('input',undefined,{type:'file',accept:'.pdf,.docx,.txt,.md,.markdown',multiple:true,hidden:true});input.dataset.importAttachments='';
   input.onchange=async()=>{try{const added=await onImport([...input.files]);for(const e of added)attachDocument(draft,e,items.filter(i=>i.id!==draft.id),documents());paint();}catch(error){errorBox.textContent=error.message;}finally{input.value='';}};
   head.append(existing,button(ui('导入附件','Import attachment'),()=>input.click()));files.append(head,list,input);paint();
   const errorBox=node('p','',{role:'alert'}),actions=node('div',undefined,{className:'item-actions'});

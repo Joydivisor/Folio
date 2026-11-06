@@ -78,6 +78,7 @@ jobs:
             dist/v*/runtime-smoke.json
             dist/v*/build-timing.json
             dist/v*/release-upload.json
+            dist/v*/release-preflight.json
             tests/reports/library-restart.json
           if-no-files-found: warn
           retention-days: 7

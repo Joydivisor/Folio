@@ -2,6 +2,7 @@ import {layoutText,plainLayout,blockContext} from './reflow-layout.js';
 import {enhancePDFSelection} from './pdf-selection.js';
 import {cropSource} from './reflow-view.js';
 import {ui} from './workspace-ui.js';
+import {needsOCR,mountOCRLayer} from './pdf-ocr.js';
 
 export const readerMode=value=>value==='paged'?'paged':'continuous';
 export function readingPosition(value,total){
@@ -9,7 +10,7 @@ export function readingPosition(value,total){
  return {page:Math.max(1,Math.min(total,Math.trunc(Number(p.page)||1))),offset:Math.max(0,Math.min(.98,Number(p.offset)||0))};
 }
 // Page shells keep their dimensions when distant canvases are released.
-export function createReaderView({host,viewport,pdf,pdfLib,textPages,zoom=1,mode='continuous',onActive=()=>{},onPosition=()=>{},onRendered=()=>{},onSelect=()=>{}}){
+export function createReaderView({host,viewport,pdf,pdfLib,textPages,zoom=1,mode='continuous',ocr=null,onOCRReview=()=>{},onActive=()=>{},onPosition=()=>{},onRendered=()=>{},onSelect=()=>{}}){
  const count=pdf?.numPages||textPages.length,records=new Map(),abort=new AbortController();
  let dead=false,observer,frame=0,timer,active=1,jumping=false,inflight=0,queue=[],lastPosition={page:1,offset:0};
  const shown=()=>!dead&&host.isConnected&&viewport.clientHeight>0&&viewport.clientWidth>0;
@@ -21,7 +22,7 @@ export function createReaderView({host,viewport,pdf,pdfLib,textPages,zoom=1,mode
  }
  function schedule(){cancelAnimationFrame(frame);frame=requestAnimationFrame(report);}
  function pinned(r){const s=getSelection();return !!s?.rangeCount&&!s.isCollapsed&&s.getRangeAt(0).intersectsNode(r.wrap);}
- function release(r){r.controls?.destroy();r.controls=null;r.textLayer?.cancel();r.textLayer=null;r.task?.cancel();r.task=null;r.wrap.querySelectorAll('canvas').forEach(c=>{c.width=0;c.height=0;});r.wrap.replaceChildren();r.ready=false;r.layout=null;r.wrap.dataset.ready='false';}
+ function release(r){r.generation=(r.generation||0)+1;r.controls?.destroy();r.controls=null;r.textLayer?.cancel();r.textLayer=null;r.task?.cancel();r.task=null;r.wrap.querySelectorAll('canvas').forEach(c=>{c.width=0;c.height=0;});r.wrap.replaceChildren();r.ready=false;r.layout=null;r.wrap.dataset.ready='false';}
  function evict(){for(const r of records.values())if(r.ready&&Math.abs(r.number-active)>4&&!pinned(r)&&!r.wrap.contains(document.activeElement))release(r);}
  function enqueue(r){if(dead||r.ready||r.promise)return r?.promise;if(!queue.includes(r))queue.push(r);pump();}
  function pump(){while(!dead&&inflight<2&&queue.length){const r=queue.shift();if(r.ready||r.promise)continue;inflight++;load(r).catch(()=>{}).finally(()=>{inflight--;pump();});}}
@@ -40,6 +41,17 @@ export function createReaderView({host,viewport,pdf,pdfLib,textPages,zoom=1,mode
     r.textLayer=new pdfLib.TextLayer({textContentSource:content,container:layer,viewport:v});await r.textLayer.render();if(dead)return;
     r.layout=layoutText(content.items,natural,r.number);
     r.controls=enhancePDFSelection({layer,textDivs:r.textLayer.textDivs,items:content.items,layout:r.layout,viewport:natural,wrap:r.wrap,onSelect:blocks=>{if(dead)return;const ids=blocks.map(b=>b.id);onSelect(r.number,{text:blocks.map(b=>b.text).join('\n\n'),blockIds:ids,rect:blocks[0]?.rect,selectionMethod:'blocks',blockContext:blockContext(r.layout,ids),...(blocks.length===1&&['formula','table'].includes(blocks[0].kind)?{image:cropSource(canvas,blocks[0].rect)}:{})});}});
+    if(ocr&&needsOCR(content.items)){
+     const generation=r.generation||0,status=document.createElement('button');status.type='button';status.className='ocr-page-status';status.textContent=ui('正在识别扫描文字…','Recognizing scanned text…');status.disabled=true;r.wrap.append(status);
+     const valid=()=>!dead&&(r.generation||0)===generation&&layer.isConnected;
+     const recognize=()=>ocr.recognize(r.number,{onProgress:m=>{if(valid())status.textContent=ui('本地识别 ','Local OCR ')+Math.round((m.progress||0)*100)+'%';}}).then(record=>{
+      if(!valid()||!record)return;r.ocr=record;
+      if(record.words?.length){r.controls?.destroy();const mounted=mountOCRLayer({record,layer,wrap:r.wrap,natural,page:r.number,onSelect:blocks=>{const ids=blocks.map(b=>b.id);onSelect(r.number,{text:blocks.map(b=>b.text).join('\n\n'),blockIds:ids,rect:blocks[0]?.rect,selectionMethod:'blocks',ocr:true,blockContext:blockContext(r.layout,ids)});}});r.controls=mounted.controls;r.layout=mounted.layout;}
+      else if(record.text)r.layout=plainLayout(record.text,r.number);
+      status.textContent=record.text.trim()?ui('已识别 · 检查文字','Recognized · Review text'):ui('未识别到文字 · 重试','No text found · Retry');status.disabled=false;status.onclick=()=>onOCRReview(r.number);onRendered(r);if(active===r.number)onActive(r);
+     }).catch(error=>{if(!valid()||error.name==='AbortError')return;status.disabled=false;status.textContent=ui('识别失败 · 点击重试','Recognition failed · Retry');status.onclick=()=>{status.disabled=true;void recognize();};});
+     void recognize();
+    }
    }
    if(dead)return;r.ready=true;delete r.wrap.dataset.loading;r.wrap.dataset.ready='true';onRendered(r);if(active===r.number)onActive(r);evict();return r;
   })().catch(error=>{if(dead||error.name==='RenderingCancelledException'||error.name==='AbortException')return;
