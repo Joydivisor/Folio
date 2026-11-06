@@ -9,6 +9,7 @@ import {pathToFileURL} from 'node:url';
 import {assertDraft, assetState, syncDraftAssets} from './release-assets.mjs';
 export {syncDraftAssets} from './release-assets.mjs';
 import {checkDraftUpload, uploadTimeoutMs} from './release-preflight.mjs';
+import {releaseNetworkEnv} from './release-network.mjs';
 
 async function main() {
   const {values, positionals} = parseArgs({options: {tag: {type: 'string'}, repo: {type: 'string'}, check: {type: 'boolean'}}, allowPositionals: true});
@@ -17,12 +18,14 @@ async function main() {
   const repo = values.repo || process.env.GITHUB_REPOSITORY;
   if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo) || tag !== 'v' + version) throw Error('Set --repo owner/repo and --tag matching package.json.');
   const run = promisify(execFile);
+  const network = await releaseNetworkEnv();
   const log = text => console.log(new Date().toISOString() + ' ' + text);
+  log('Release network route: ' + network.source);
   const gh = async (args, {timeout = 25000, retryRead = false, label} = {}) => {
     for (let attempt = 1; attempt <= (retryRead ? 3 : 1); attempt++) {
       const started = Date.now();
       const heartbeat = label ? setInterval(() => log(label + ': still transferring (' + Math.round((Date.now() - started) / 1000) + 's elapsed; limit ' + Math.round(timeout / 1000) + 's)'), 10000) : null;
-      try { return (await run('gh', args, {windowsHide: true, timeout, maxBuffer: 4 * 1024 * 1024})).stdout; }
+      try { return (await run('gh', args, {env: network.env, windowsHide: true, timeout, maxBuffer: 4 * 1024 * 1024})).stdout; }
       catch (error) {
         const transient = error.killed || /connection|timed? ?out|timeout|TLS|EOF|HTTP 50[234]|HTTP 429|temporary|network/i.test(error.stderr || error.message);
         if (!retryRead || attempt === 3 || !transient) throw error;
@@ -67,7 +70,7 @@ async function main() {
     preflight = await checkDraftUpload({tag, version, files, probe, getRelease,
       upload: file => gh(['release', 'upload', tag, file.path, '--repo', repo], {timeout: 60000, label: 'Channel probe'}),
       remove: id => gh(['api', '--method', 'DELETE', 'repos/' + repo + '/releases/assets/' + id])});
-    fs.writeFileSync(preflightPath, JSON.stringify({checkedAt: new Date().toISOString(), repo, tag, ...preflight}, null, 2));
+    fs.writeFileSync(preflightPath, JSON.stringify({checkedAt: new Date().toISOString(), repo, tag, networkSource: network.source, ...preflight}, null, 2));
   } catch (error) {
     fs.writeFileSync(preflightPath, JSON.stringify({checkedAt: new Date().toISOString(), repo, tag, passed: false, error: error.message, cause: error.cause?.message}, null, 2));
     throw error;

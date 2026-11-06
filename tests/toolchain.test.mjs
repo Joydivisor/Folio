@@ -8,6 +8,7 @@ import {createPackageWithOptions, extractFile} from '@electron/asar';
 import {auditPackage} from '../scripts/audit-package.mjs';
 import {syncDraftAssets} from '../scripts/upload-release.mjs';
 import {checkDraftUpload, uploadTimeoutMs} from '../scripts/release-preflight.mjs';
+import {windowsProxy, releaseNetworkEnv} from '../scripts/release-network.mjs';
 import {electronPackageOptions} from '../scripts/electron-cache.mjs';
 
 test('legacy Electron cache is reused only after official checksum validation', async t => {
@@ -122,4 +123,16 @@ test('a slow local probe redirects a large transfer before sending an installer'
   let assets = [], elapsed = 0;
   const result = await checkDraftUpload({...options, files: [{...local, size: 190000000}], probe, now: () => elapsed, getRelease: async () => draft(assets), upload: async f => {assert.equal(f.name, probe.name);assets = [probeAsset];elapsed = 23000;}, remove: async () => {assets = [];}});
   assert.equal(result.recommendedRoute, 'ci');assert.deepEqual(assets, []);
+});
+test('release routing uses an enabled Windows HTTPS proxy and rejects malformed settings', () => {
+  assert.equal(windowsProxy({ProxyEnable: 1, ProxyServer: '127.0.0.1:7897'}), 'http://127.0.0.1:7897');
+  assert.equal(windowsProxy({ProxyEnable: 1, ProxyServer: 'http=localhost:1234;https=localhost:5678'}), 'http://localhost:5678');
+  for (const settings of [{ProxyEnable: 0, ProxyServer: 'localhost:7897'}, {ProxyEnable: 1, ProxyServer: 'socks=localhost:7897'}, {ProxyEnable: 1, ProxyServer: 'host/path'}, {ProxyEnable: 1, ProxyServer: 'user:password@host'}]) assert.equal(windowsProxy(settings), null);
+});
+test('release routing preserves explicit proxy configuration and never mutates the parent environment', async () => {
+  const base = {HTTPS_PROXY: 'http://example.invalid:1234'};
+  const explicit = await releaseNetworkEnv(base, {platform: 'win32', readSettings: () => {throw Error('Must not read system settings');}});
+  assert.deepEqual(explicit.env, base);assert.equal(explicit.source, 'environment');
+  const empty = {}, system = await releaseNetworkEnv(empty, {platform: 'win32', readSettings: async () => ({ProxyEnable: 1, ProxyServer: 'localhost:7897'})});
+  assert.deepEqual(empty, {});assert.equal(system.source, 'windows-system-proxy');assert.equal(system.env.HTTPS_PROXY, 'http://localhost:7897');
 });
