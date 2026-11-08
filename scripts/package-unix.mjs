@@ -36,7 +36,7 @@ if(platform==='darwin'){
  permissions(stage);
  fs.chmodSync(path.join(install,'chrome-sandbox'),0o4755);
  const control=path.join(stage,'DEBIAN');fs.mkdirSync(control,{recursive:true});
- fs.writeFileSync(path.join(control,'control'),`Package: folio\nVersion: ${version.replace('-beta.','~beta.')}\nArchitecture: amd64\nMaintainer: Folio <noreply@getfolio.pages.dev>\nSection: education\nPriority: optional\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libxtst6, libatspi2.0-0, libdrm2\nHomepage: https://getfolio.pages.dev/\nDescription: Local-first interactive reading workspace\n Read documents, annotate and explore concepts with your own AI service.\n`);
+ fs.writeFileSync(path.join(control,'control'),`Package: folio\nVersion: ${version.replace('-beta.','~beta.')}\nArchitecture: amd64\nMaintainer: Folio <noreply@getfolio.pages.dev>\nSection: education\nPriority: optional\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libxtst6, libatspi2.0-0, libdrm2, fonts-noto-cjk\nHomepage: https://getfolio.pages.dev/\nDescription: Local-first interactive reading workspace\n Read documents, annotate and explore concepts with your own AI service.\n`);
  const applications=path.join(stage,'usr','share','applications'),icons=path.join(stage,'usr','share','icons','hicolor','512x512','apps');fs.mkdirSync(applications,{recursive:true});fs.mkdirSync(icons,{recursive:true});
  fs.copyFileSync(icon,path.join(icons,'folio.png'));
  fs.writeFileSync(path.join(applications,'folio.desktop'),'[Desktop Entry]\nName=Folio\nComment=Interactive reading workspace\nExec=/opt/Folio/Folio\nIcon=folio\nTerminal=false\nType=Application\nCategories=Education;Office;\nStartupWMClass=Folio\n');
