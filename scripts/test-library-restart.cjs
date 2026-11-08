@@ -18,7 +18,7 @@ if(!process.versions.electron){
   }
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
   const r=spawnSync(require('electron'),[__filename,phase,temp],{env,encoding:'utf8',windowsHide:true,timeout:60000});
-  if(r.status!==0){console.error(r.stdout,r.stderr);process.exit(1);}
+  if(r.status!==0){console.error('Library phase failed: '+phase,r.error||r.signal||r.status,r.stdout,r.stderr);process.exit(1);}
   const row=r.stdout.split(/\r?\n/).find(line=>line.startsWith('RESULT '));assert(row,phase+' No phase result: '+r.stdout+' '+r.stderr);checks.push(JSON.parse(row.slice(7)));
  }
  fs.writeFileSync(path.join(reports,'library-restart.json'),JSON.stringify({runtime,checks},null,2));
@@ -41,7 +41,8 @@ if(!process.versions.electron){
   await win.loadURL(origin);await until("!!document.querySelector('#fileInput').onchange");win.webContents.debugger.attach('1.3');
   await js(`window.libraryDB=new Promise((resolve,reject)=>{const r=indexedDB.open('jianwei-library',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});window.getFolder=async()=>{const d=await libraryDB;return new Promise(r=>{const q=d.transaction('meta').objectStore('meta').get('folder');q.onsuccess=()=>r(q.result);});};void 0`);
   if(phase==='seed'){
-   await js(`window.dropped=new Promise((resolve,reject)=>{for(const name of ['dragenter','dragover'])document.addEventListener(name,e=>{e.preventDefault();e.stopImmediatePropagation();},true);document.addEventListener('drop',async e=>{e.preventDefault();e.stopImmediatePropagation();try{const folder=await e.dataTransfer.items[0].getAsFileSystemHandle();const d=await libraryDB;await new Promise((a,b)=>{const tx=d.transaction(['meta','files'],'readwrite');tx.objectStore('meta').put(folder,'folder');tx.objectStore('meta').delete('folder-catalog');tx.objectStore('files').put({id:'local:restart-fixture',name:'local.txt',path:'Local library',blob:new File(['Local copy survives restart'],'local.txt')});tx.oncomplete=a;tx.onerror=b;});localStorage.setItem('jianwei-favorites',JSON.stringify(['folder:Restart library:first.txt']));resolve(folder.kind);}catch(error){reject(error);}},true);});void 0`);
+   // Seed the legacy linked-folder handle before the application's document-level copy importer.
+   await js(`window.dropped=new Promise((resolve,reject)=>{for(const name of ['dragenter','dragover'])window.addEventListener(name,e=>{e.preventDefault();e.stopImmediatePropagation();},true);window.addEventListener('drop',async e=>{e.preventDefault();e.stopImmediatePropagation();try{const folder=await e.dataTransfer.items[0].getAsFileSystemHandle();const d=await libraryDB;await new Promise((a,b)=>{const tx=d.transaction(['meta','files'],'readwrite');tx.objectStore('meta').put(folder,'folder');tx.objectStore('meta').delete('folder-catalog');tx.objectStore('files').put({id:'local:restart-fixture',name:'local.txt',path:'Local library',blob:new File(['Local copy survives restart'],'local.txt')});tx.oncomplete=a;tx.onerror=b;});localStorage.setItem('jianwei-favorites',JSON.stringify(['folder:Restart library:first.txt']));resolve(folder.kind);}catch(error){reject(error);}},true);});void 0`);
    for(const type of ['dragEnter','dragOver','drop']){await win.webContents.debugger.sendCommand('Input.dispatchDragEvent',{type,x:350,y:300,data:{items:[],files:[path.join(temp,'Restart library')],dragOperationsMask:1}});await wait(100);}
    assert.equal(await js('dropped'),'directory');
   }else{

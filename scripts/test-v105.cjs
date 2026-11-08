@@ -27,7 +27,7 @@ if(!process.versions.electron){
    return Response.json({choices:[{message:{content:JSON.stringify(response)}}]});
   }});await new Promise(r=>server.listen(4196,'127.0.0.1',r));
   win=new BrowserWindow({width:1400,height:950,show:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false,offscreen:true}});
-  await win.loadURL('http://127.0.0.1:4196');await until("!!document.querySelector('#fileInput')?.onchange");win.webContents.debugger.attach('1.3');
+  await win.loadURL('http://127.0.0.1:4196');await js("(async()=>{const {setLanguage}=await import('/i18n.js');setLanguage('zh-CN')})()");await until("!!document.querySelector('#fileInput')?.onchange");win.webContents.debugger.attach('1.3');
   await js("window.__errors=[];window.addEventListener('error',e=>__errors.push(e.message));window.addEventListener('unhandledrejection',e=>__errors.push(String(e.reason)))");
   const course=path.join(temp,'Course folder'),nested=path.join(course,'Nested');fs.mkdirSync(nested,{recursive:true});for(let i=0;i<105;i++)fs.writeFileSync(path.join(i<100?course:nested,'lecture-'+i+'.txt'),'Cycle (1 2 3) has order three. Document '+i);fs.writeFileSync(path.join(course,'skip.bin'),'unsupported');fs.writeFileSync(path.join(course,'.hidden.txt'),'hidden');
   await nativeDrop([course]);await until("document.querySelectorAll('[data-doc]').length===105",60000);assert.match(await js("document.querySelector('#folderTree').textContent"),/Nested/);await shot('folder-drop');
