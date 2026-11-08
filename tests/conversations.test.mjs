@@ -13,6 +13,8 @@ test('opt-in archives complete conversations with stable book/page/question rout
 });
 test('empty or cancelled sessions do not create placeholder notes',()=>{const saved=[],c=createConversations({enabled:()=>true,save:n=>saved.push(n)});c.begin(source,'未完成');c.reset();assert.equal(saved.length,0);assert.deepEqual(noteTrail({source:{name:'外部文字',page:'—'},text:'a'}),['笔记','外部文字','手动笔记']);});
 
-test('long same-session history is bounded without importing another book',()=>{
- const c=createConversations(),id=c.begin(source,'initial');for(let i=0;i<20;i++)c.complete(id,'问题'.repeat(500),{title:'回答',paragraphs:[{text:'解释'.repeat(3000)}]},{});assert.ok(c.history().reduce((n,t)=>n+t.question.length+t.answer.length,0)<=8000);assert.ok(c.history().length<=6);c.begin({id:'biology',name:'生物',page:1},'ATP');assert.deepEqual(c.history(),[]);
+test('long same-session history preserves every turn and full text until explicit new chat',()=>{
+ const c=createConversations(),id=c.begin(source,'initial');for(let i=0;i<20;i++)c.complete(id,'问题'.repeat(500),{title:'回答',paragraphs:[{text:'解释'.repeat(3000),sources:[]}]},{});
+ assert.equal(c.history().length,20);assert.equal(c.history()[0].question.length,1000);assert.equal(c.history()[0].answer.length,6000);
+ assert.equal(c.ensure({id:'biology',name:'生物',page:1},'ATP'),id);assert.equal(c.history().length,20);c.reset();c.ensure(source,'New chat');assert.deepEqual(c.history(),[]);
 });

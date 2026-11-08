@@ -1,5 +1,6 @@
 // Versioned local workspace. Legacy records remain untouched until users choose to remove them.
 import {DISPLAY_KINDS,parseDisplayPlan} from './display-plan.js';
+import {CHAT_STATE_KEY,validateConversation} from './conversations.js';
 import {parseUnderstanding} from './understanding.js';
 import {validatePermutationSnapshot} from './permutation-state.js';
 import {parseGraph} from './graph-schema.js';
@@ -26,7 +27,7 @@ export function validateBackup(value){
  if(value?.format!=='folio-workspace'||value.version!==1||!value.tables)throw Error('Unsupported backup format');
  validateTree(value);
  const out={};
- for(const name of TABLES){const rows=value.tables[name];if(!Array.isArray(rows)||rows.length>100000)throw Error('Invalid backup table: '+name);const ids=new Set();out[name]=rows.map(row=>{if(!row||typeof row.id!=='string'||!row.id||row.id.length>1000||ids.has(row.id))throw Error('Invalid or duplicate record');ids.add(row.id);if(name==='state'&&!DATA_KEYS.includes(row.id))throw Error('Unsupported settings in backup');return structuredClone(row);});}
+ for(const name of TABLES){const rows=value.tables[name];if(!Array.isArray(rows)||rows.length>100000)throw Error('Invalid backup table: '+name);const ids=new Set();out[name]=rows.map(row=>{if(!row||typeof row.id!=='string'||!row.id||row.id.length>1000||ids.has(row.id))throw Error('Invalid or duplicate record');ids.add(row.id);if(name==='state'&&!DATA_KEYS.includes(row.id)&&row.id!==CHAT_STATE_KEY)throw Error('Unsupported settings in backup');if(name==='state'&&row.id===CHAT_STATE_KEY)validateConversation(row.value);return structuredClone(row);});}
  for(const doc of out.documents)if(typeof doc.name!=='string'||typeof doc.revision!=='string'||!Array.isArray(doc.aliases))throw Error('Invalid document record');
  for(const page of out.pages)if(typeof page.documentId!=='string'||!Number.isInteger(page.page)||page.page<1||typeof page.text!=='string')throw Error('Invalid page record');
  for(const p of out.pages)if(p.image&&!imageSafe(p.image))throw Error('Invalid OCR image');

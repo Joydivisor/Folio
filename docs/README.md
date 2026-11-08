@@ -1,11 +1,12 @@
 # Folio 文档
 
-- 当前源码：**1.0.4 r3**。源码采用 GPL-3.0-only。
+- 当前源码：**1.0.5 r2**。源码采用 GPL-3.0-only。
+- [V1.0.5 持续聊天与自测](release-1.0.5.md)：文件夹拖入、1M 上下文、原图视觉输入、选择题／填空题。
 - [V1.0.4 阅读与交互](release-1.0.4.md)：DOCX、扫描 PDF、紧凑提问框、输出菜单、图示联动与交互笔记。
 - [真实扫描 OCR 复测](ocr-validation-1.0.4.md)：3 份文件、7 页，正文字符对照与已知边界。
 - [V1.0.2 应用内更新](release-1.0.2.md)：Windows 更新流程、发布文件和实际安装升级验证。
 - [开发与打包说明](../README.md)：启动、测试、构建和项目结构。
-- [正式版下载与校验](https://github.com/Joydivisor/Folio/releases/tag/v1.0.4)：各平台安装包和 SHA-256 清单。
+- [正式版下载与校验](https://github.com/Joydivisor/Folio/releases/tag/v1.0.5)：各平台安装包和 SHA-256 清单。
 - [V1.0.1 下载入口迁移](release-1.0.1.md)：统一主仓库与旧版手动升级说明。
 - [V1.0.0 发布与重启修复](release-1.0.0.md)：启动恢复、验证方式与开源说明。
 - [beta.10 实施与验收](beta10-plan.md)：连续阅读、自然图文、通用 Anatomy 与本地构建。

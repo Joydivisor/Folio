@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.5 · 2026-11-08
+
+- r2: Fix long answers painting over the self-check card. Lay out history, answers and quizzes in natural vertical flow; scroll wide display equations within their own containers. Verify long math, follow-ups, history expansion, zoom and restart in real Chromium.
+
+- Drop folders or documents anywhere to import local copies recursively, preserving subfolder paths. Handle full directory batches, hidden files, unsupported formats and read failures.
+- Keep one chat across new selections, documents, pages and library navigation. Persist the transcript, per-turn sources and quizzes locally and restore after restart. Only the top-right + starts a new chat.
+- Replace six-turn/8,000-character history and 48,000-character proxy limits with a 1M-token application budget and 32 MiB transport bound. Preserve all history; report provider limits without silently truncating. Token usage is estimated.
+- Send source images to compatible vision models, including scanned PDF pages, selected regions and dropped/pasted images. Adapt OpenAI-compatible and native Claude content blocks; offer an explicit vision/OCR setting.
+- Add one-question multiple-choice and fill-in-the-blank checks based on each answer, with answers hidden until submission or reveal and locally saved feedback.
+
+Implementation and verification: [V1.0.5](docs/release-1.0.5.md).
+
 ## 1.0.4 · 2026-11-06
 
 - Import DOCX as readable text, including paragraphs, table cells and common formula expressions; accept `.markdown` files across library import, folder scans, attachments and source relinking. DOCX uses reflow sections, not Word pagination.

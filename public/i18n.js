@@ -209,6 +209,14 @@ DeepSeek 官方模型文档 ↗|DeepSeek model documentation ↗
 实验|Experiments
 对话|Conversation
 学习区|Learning area
+新建聊天|New chat
+新建聊天（＋）|New chat (+)
+图片读取|Image input
+自动 · 视觉模型读原图，其余用 OCR|Automatic: vision models read images; others use OCR
+使用视觉模型读取原图|Read images with a vision model
+仅本地 OCR 文字|Local OCR text only
+单聊天上下文：1M tokens。保留完整历史；实际调用上限取决于模型服务。|Chat context: 1M tokens. Full history is preserved; provider limits apply.
+视觉模式会将引用图片发送到当前模型服务。|Vision mode sends referenced images to the selected model provider.
 新问题|New question
 新问题 · 清空当前对话|New question · clear this conversation
 描述你想看懂的内容…|What would you like to understand?

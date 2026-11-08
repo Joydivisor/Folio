@@ -34,6 +34,19 @@ jobs:
       - run: npm run package:win
       - run: npm run installer:win
       - run: node scripts/smoke-desktop.mjs
+      - name: Verify V1.0.5 features and long-answer layout in the packaged app
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $env:FOLIO_TEST_ARCHIVE = Join-Path $PWD "dist/v$version/Folio-win32-x64/resources/app.asar"
+          npm run test:v105
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:v105-layout
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:v104
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run test:v104-polish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: node scripts/test-update-install.mjs
       - run: node scripts/finalize-windows-release.mjs
       - name: Upload to the existing release draft
@@ -55,6 +68,11 @@ jobs:
             dist/v*/release-preflight.json
             tests/reports/update-install.json
             tests/reports/update-install-*/*.png
+            tests/reports/v105/result.json
+            tests/reports/v105-layout/result.json
+            tests/reports/v105-layout/*.png
+            tests/reports/v104/result.json
+            tests/reports/v104-polish/result.json
           retention-days: 7
       - uses: actions/upload-artifact@v4
         if: success() && (inputs.release_tag == '' || steps.release-upload.outcome != 'success')

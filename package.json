@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Local-first reading workspace with continuous documents, interactive artifacts and model-independent illustrations",
   "main": "desktop/main.cjs",
   "scripts": {
@@ -11,6 +11,8 @@
     "package:win": "node scripts/package-desktop.mjs",
     "installer:win": "node scripts/build-installer.mjs",
     "package:unix": "node scripts/package-unix.mjs",
+    "test:v105": "node scripts/test-v105.cjs",
+    "test:v105-layout": "node scripts/test-v105-layout.cjs",
     "test:v104": "node scripts/test-v104.cjs",
     "test:v104-polish": "node scripts/test-v104-polish.cjs"
   },
@@ -50,5 +52,5 @@
   },
   "productName": "Folio",
   "private": true,
-  "folioRevision": "r3"
+  "folioRevision": "r2"
 }

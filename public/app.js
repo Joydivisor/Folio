@@ -1,6 +1,6 @@
 import {DOCUMENT_ACCEPT,supportsDocument,documentTitle,readTextDocument} from './document-formats.js';
 import {setupPromptComposer} from './prompt-composer.js';
-import {createPDFOCR,needsOCR} from './pdf-ocr.js';
+import {createPDFOCR,needsOCR,recognizeImage} from './pdf-ocr.js';
 import {mountArtifactVisual} from './artifact-renderer.js';
 import {mountNoteArtifact} from './note-artifact.js';
 import {requestsArtifactEdit} from './reading-intent.js';
@@ -31,7 +31,11 @@ import {setupReaderNavigation} from './reader-navigation.js';
 import {openWorkspace,DATA_KEYS} from './workspace-store.js';
 import {setupShell} from './shell.js';
 import {t,language} from './i18n.js';
-import {createConversations} from './conversations.js';
+import {createConversations,CHAT_STATE_KEY} from './conversations.js';
+import {captureDroppedItems,readDroppedFiles} from './file-drop.js';
+import {estimateTokens,assertContextFits} from './chat-context.js';
+import {usesVision,isImageFile,imageFromFile,imageFromPDF,withImages} from './vision-input.js';
+import {mountSelfCheck,quizPrompt,parseQuiz} from './self-check.js';
 import {setupNotebook} from './notebook.js';
 import {requestStructured} from './structured-response.js';
 import {createDocumentIndex} from './document-context.js';
@@ -69,9 +73,11 @@ let current={id:'',name:'',kind:'file'},page=1,total=1,zoom=1,pdf=null,pdfLib=nu
 const positions=readLocal('jianwei-positions',{}),notes=readLocal('jianwei-notes',[]);
 let readingMode=readerMode(readLocal('folio-reading-mode','continuous')),readerView=null;
 const readerOffsets=readLocal('folio-reader-offsets',{});
-let requestController=null;
+let requestController=null,chatEpoch=0;
 let rememberConversations=readLocal('folio-remember-conversations',false)===true;
-const conversations=createConversations({enabled:()=>rememberConversations,save:note=>{const index=notes.findIndex(n=>n.id===note.id);if(index>=0)notes[index]=note;else notes.unshift(note);saveLocal('jianwei-notes',notes);renderNotes();}});
+let chatSave=Promise.resolve();
+const conversations=createConversations({onChange:value=>{chatSave=chatSave.catch(()=>{}).then(()=>workspace.put('state',{id:CHAT_STATE_KEY,value}));chatSave.catch(()=>toast(ui('聊天保存失败，请检查本机存储空间。','Chat could not be saved. Check local storage.')));},enabled:()=>rememberConversations,save:note=>{const index=notes.findIndex(n=>n.id===note.id);if(index>=0)notes[index]=note;else notes.unshift(note);saveLocal('jianwei-notes',notes);renderNotes();}});
+try{const saved=await workspace.get('state',CHAT_STATE_KEY);if(saved)conversations.restore(saved.value);}catch{toast(ui('无法恢复聊天，请保留工作区并重试。','Could not restore the chat. Keep the workspace and retry.'));}
 let desktopKey={configured:false,persisted:false},serverKey=false;
 const hasKey=()=>Boolean(settings.apiKey||desktopKey.configured||(serverKey&&normalizeEndpoint(settings.baseUrl)==='https://api.deepseek.com'));
 let settings={baseUrl:'https://api.deepseek.com',model:'deepseek-flash',thinking:false,...readLocal('jianwei-settings',{}),apiKey:''};
@@ -84,10 +90,10 @@ const supports=supportsDocument;
 let libraryFilter='all',libraryDisplay=readLocal('folio-display','list'),selectedDocument=null;
 const favorites=new Set(readLocal('jianwei-favorites',[])),recent=readLocal('jianwei-recent',{});
 const hiddenDocuments=new Set(readLocal('folio-hidden-documents',[]));
-function showLibrary(){navigation.stop();endConversation();setCanvasFocus(false);document.body.dataset.view='library';$('libraryHome').hidden=false;$('readingWorkspace').hidden=true;$('viewTitle').textContent='Library';$('libraryButton').classList.add('active');$('readerTab').classList.remove('active');renderLibrary();}
+function showLibrary(){navigation.stop();conversations.archive();setCanvasFocus(false);document.body.dataset.view='library';$('libraryHome').hidden=false;$('readingWorkspace').hidden=true;$('viewTitle').textContent='Library';$('libraryButton').classList.add('active');$('readerTab').classList.remove('active');renderLibrary();}
 function showReader(){if(location.hash.startsWith('#/notes'))history.replaceState(null,'',location.pathname);document.body.dataset.view='reader';$('libraryHome').hidden=true;$('readingWorkspace').hidden=false;$('viewTitle').textContent='Reader';$('libraryButton').classList.remove('active');$('readerTab').classList.add('active');$('readerTabGroup').hidden=false;}
 function folderDot(path){const colors=['#e6b85c','#61c5a3','#729fe0','#ce82ab','#a88cdb'];const hash=[...path].reduce((n,c)=>(n*31+c.charCodeAt(0))>>>0,0);return '<i class="folder-dot" style="--dot:'+colors[hash%colors.length]+'" aria-hidden="true"></i>';}
-function renderFolders(){const paths=new Set();for(const e of folderEntries){const pieces=e.path.split('/');pieces.pop();for(let i=1;i<=pieces.length;i++)paths.add(pieces.slice(0,i).join('/'));}let content=folder?'<button data-folder="folder:" class="'+(libraryFilter==='folder:'?'active':'')+'">'+folderDot(folder.name)+'<span>'+esc(folder.name)+'</span></button>':'<div class="folder-placeholder">尚未连接</div>';for(const p of [...paths].sort())content+='<button data-folder="'+esc('folder:'+p)+'" style="padding-left:'+Math.min(35,19+p.split('/').length*7)+'px" class="'+(libraryFilter==='folder:'+p?'active':'')+'">'+folderDot(p)+'<span>'+esc(p.split('/').at(-1))+'</span></button>';$('folderTree').innerHTML=content;$('folderTree').querySelectorAll('[data-folder]').forEach(b=>b.onclick=()=>{libraryFilter=b.dataset.folder;history.replaceState(null,'',location.pathname);renderLibrary();});}
+function renderFolders(){const paths=new Set();for(const e of [...folderEntries,...cachedEntries.filter(e=>e.importedPath)]){const pieces=e.path.split('/');pieces.pop();for(let i=1;i<=pieces.length;i++)paths.add(pieces.slice(0,i).join('/'));}let content=folder?'<button data-folder="folder:" class="'+(libraryFilter==='folder:'?'active':'')+'">'+folderDot(folder.name)+'<span>'+esc(folder.name)+'</span></button>':paths.size?'':'<div class="folder-placeholder">尚未连接</div>';for(const p of [...paths].sort())content+='<button data-folder="'+esc('folder:'+p)+'" style="padding-left:'+Math.min(35,19+p.split('/').length*7)+'px" class="'+(libraryFilter==='folder:'+p?'active':'')+'">'+folderDot(p)+'<span>'+esc(p.split('/').at(-1))+'</span></button>';$('folderTree').innerHTML=content;$('folderTree').querySelectorAll('[data-folder]').forEach(b=>b.onclick=()=>{libraryFilter=b.dataset.folder;history.replaceState(null,'',location.pathname);renderLibrary();});}
 function formatReadTime(value){return value?new Intl.DateTimeFormat(language(),{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(value):'—';}
 function selectDocument(id){
  selectedDocument=id;
@@ -124,7 +130,7 @@ function renderLibrary(){
   if(libraryFilter==='recent'&&!members.some(e=>recent[e.id]))return false;
   if(libraryFilter==='starred'&&!members.some(e=>favorites.has(e.id)))return false;
   if(libraryFilter.startsWith('collection:')&&!members.some(e=>inCollection(e,collections.find(c=>c.id===libraryFilter.slice(11)),documentRecords,libraryItems,collections)))return false;
-  if(libraryFilter.startsWith('folder:')){const prefix=libraryFilter.slice(7);if(!members.some(e=>e.handle&&(!prefix||e.path.startsWith(prefix+'/'))))return false;}
+  if(libraryFilter.startsWith('folder:')){const prefix=libraryFilter.slice(7);if(!members.some(e=>(e.handle||e.importedPath)&&(!prefix||e.path.startsWith(prefix+'/'))))return false;}
   if(status==='unfiled'&&members.some(e=>collections.some(c=>inCollection(e,c,documentRecords,libraryItems))))return false;
   if(status==='notes'&&!members.some(e=>notesForDocument(notes,e,documentRecords).length))return false;
   const reading=item?.readStatus||(members.some(e=>recent[e.id])?'reading':'unread');
@@ -142,7 +148,7 @@ function renderLibrary(){
  $('gridView').classList.toggle('active',libraryDisplay==='grid');
  $('listView').classList.toggle('active',libraryDisplay==='list');
  function card(e,group,child=false){
-  const item=group.item,type=e.name.split('.').pop().toUpperCase(),title=!child&&item?item.title:documentTitle(e.name),location=e.handle?(e.path.split('/').slice(0,-1).join('/')||folder?.name||ui('本地文件夹','Local folder')):ui('本地副本','Local copy');
+  const item=group.item,type=e.name.split('.').pop().toUpperCase(),title=!child&&item?item.title:documentTitle(e.name),location=(e.handle||e.importedPath)?(e.path.split('/').slice(0,-1).join('/')||folder?.name||ui('本地文件夹','Local folder')):ui('本地副本','Local copy');
   const disclosure=!child&&group.entries.length>1?'<button class="attachment-toggle" data-expand-item="'+esc(item.id)+'" aria-label="'+ui('展开或收起附件','Expand or collapse attachments')+'" aria-expanded="'+expandedItems.has(item.id)+'">'+(expandedItems.has(item.id)?'⌄':'›')+'</button>':'';
   return '<article class="document-card'+(child?' document-attachment':'')+'" data-document-row="'+esc(e.id)+'">'+disclosure+'<button class="document-open" data-doc="'+esc(e.id)+'" aria-label="'+ui('选择 ','Select ')+esc(title)+'" title="'+ui('双击阅读 ','Double-click to read ')+esc(title)+'"><span class="document-name">'+icon('file')+'<span>'+esc(title)+(!child&&item?.tags.length?'<small class="document-tags">'+esc(item.tags.join(' · '))+'</small>':'')+'</span></span><span class="document-type">'+(!child&&group.entries.length>1?group.entries.length+' '+ui('附件','files'):esc(type))+'</span><span class="document-location" title="'+esc(location)+'">'+esc(!child&&item?.authors?item.authors+(item.year?' · '+item.year:''):location)+'</span><span class="document-recent">'+formatReadTime(recent[e.id])+'</span></button><button class="favorite-button '+(favorites.has(e.id)?'saved':'')+'" data-favorite="'+esc(e.id)+'" aria-label="'+ui('收藏 ','Favorite ')+esc(title)+'">'+icon('star')+'</button></article>';
  }
@@ -179,7 +185,7 @@ $('importFiles').onclick=()=>$('fileInput').click();
 let importPending=false;
 async function importFiles(files,forceCache=false){
  if(importPending)return;
- const valid=[...files].filter(f=>supports(f.name));
+ const valid=[...files].map(f=>f.file?f:{file:f,path:f.webkitRelativePath||''}).filter(r=>supports(r.file.name));
  if(!valid.length){toast('请选择 PDF、DOCX、TXT 或 Markdown 文件。');return;}
  importPending=true;$('importFiles').disabled=true;
  try{
@@ -187,7 +193,7 @@ async function importFiles(files,forceCache=false){
   if(!destination)return;
   const target=destination.kind==='folder'?destination.handle:null;
   let count=0;
-  for(const file of valid){
+  let failed=0;for(const record of valid){const {file}=record;try{
    if(file.size>200*1024*1024){toast(file.name+' 超过 200 MB，已跳过。');continue;}
    if(target){
     let name=file.name,i=1;
@@ -195,14 +201,14 @@ async function importFiles(files,forceCache=false){
     const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();
     try{await w.write(file);await w.close();}catch(e){await w.abort().catch(()=>{});throw e;}
    }else{
-    await dbOp('files','put',{id:'local:'+crypto.randomUUID(),name:file.name,blob:await snapshotFile(file),path:file.webkitRelativePath||'浏览器本地副本'});
+    await dbOp('files','put',{id:'local:'+crypto.randomUUID(),name:file.name,blob:await snapshotFile(file),path:record.path||'浏览器本地副本',importedPath:Boolean(record.path?.includes('/'))});
    }
    count++;
-  }
+  }catch(error){failed++;console.warn('Import failed:',file.name,error.name);}}
   if(count){libraryFilter='all';$('librarySearch').value='';history.replaceState(null,'',location.pathname);}
   if(target&&target===folder)await scanFolder();
   await refreshCache();
-  toast(ui(`已导入 ${count} 篇文献${target?'到本地文件夹':'到本机库'}`,`Imported ${count} document${count===1?'':'s'} ${target?'to the folder':'to the local library'}`));
+  toast(ui(`已导入 ${count} 篇文献${target?'到本地文件夹':'到本机库'}${failed?'；'+failed+' 篇读取失败':''}`,`Imported ${count} documents${failed?'; '+failed+' failed':''}`));return {count,failed};
  }finally{importPending=false;$('importFiles').disabled=false;}
 }
 for(const [id,forceCache]of [['fileInput',false],['folderInput',true]]){
@@ -234,7 +240,7 @@ function showDocumentContext(context){
  for(const number of pages){const button=document.createElement('button');button.textContent='第 '+number+' 页 ↗';button.onclick=()=>{if(current.id===context.documentId)guard(()=>changePage(number,{keepConversation:true}))();};box.append(button);}
 }
 
-async function openDocument(entry){if(!entry)return;pdfOCR?.destroy();pdfOCR=null;readerView?.destroy();readerView=null;selectionControls?.destroy();selectionControls=null;navigation.stop();pageReady=false;$('selectRegion').disabled=true;endConversation();documentIndex=null;documentReady=false;textPages=[];showReader();recent[entry.id]=Date.now();saveLocal('jianwei-recent',recent);const token=++openToken;renderToken++;selected=null;pageText='';$('documentContent').innerHTML='<div class="loading">正在打开文献…</div>';const previous=pdf;pdf=null;current={...entry};renderNotes();page=positions[entry.id]||1;zoom=1;total=1;updatePageUI();try{const file=await readDocumentFile(entry);if(previous)await previous.loadingTask.destroy();if(token!==openToken)return;{const identity=await workspace.identify(entry,file);if(token!==openToken)return;documentRecords=documentRecords.filter(d=>d.id!==identity.id).concat(identity);current={...entry,revision:identity.revision,documentId:identity.id};renderNotes();if(/\.pdf$/i.test(entry.name)){pdfLib??=await import('/vendor/build/pdf.mjs');pdfLib.GlobalWorkerOptions.workerSrc='/vendor/build/pdf.worker.mjs';const loaded=await pdfLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),cMapUrl:'/vendor/cmaps/',cMapPacked:true,standardFontDataUrl:'/vendor/standard_fonts/',wasmUrl:'/vendor/wasm/'}).promise;if(token!==openToken){await loaded.loadingTask.destroy();return;}pdf=loaded;total=pdf.numPages;pdfOCR=createPDFOCR({pdf,entry:{...current},store:workspace,onPage:()=>{if(token===openToken)documentIndex=null;}});}else{textPages=await readTextDocument(file);total=textPages.length;}}if(token!==openToken)return;page=Math.max(1,Math.min(page,total));await renderPage();if(token===openToken)documentReady=true;renderLibrary();}catch(e){if(token!==openToken)return;if(previous)await previous.loadingTask.destroy().catch(()=>{});const box=node('div',undefined,{className:'empty-state'});box.append(node('p',fileReadMessage(e,language()==='en')),button(ui('重试','Retry'),()=>openDocument(entry)));const picker=document.createElement('input');picker.type='file';picker.accept=DOCUMENT_ACCEPT;picker.hidden=true;box.append(button(ui('重新选择文件','Locate file'),()=>picker.click()),picker);picker.onchange=guard(async()=>{const chosen=picker.files[0];if(!chosen)return;const copy=await snapshotFile(chosen);if(token!==openToken)return;const replacement={id:entry.id,name:chosen.name,path:entry.path||'',blob:copy,kind:'file'};await dbOp('files','put',replacement);folderEntries=folderEntries.filter(item=>item.id!==entry.id);await refreshCache();if(token===openToken)await openDocument(replacement);});$('documentContent').replaceChildren(box);pageText='';}}
+async function openDocument(entry){if(!entry)return;pdfOCR?.destroy();pdfOCR=null;readerView?.destroy();readerView=null;selectionControls?.destroy();selectionControls=null;navigation.stop();pageReady=false;$('selectRegion').disabled=true;if(!draftSource)setQuote(null);documentIndex=null;documentReady=false;textPages=[];showReader();recent[entry.id]=Date.now();saveLocal('jianwei-recent',recent);const token=++openToken;renderToken++;selected=null;pageText='';$('documentContent').innerHTML='<div class="loading">正在打开文献…</div>';const previous=pdf;pdf=null;current={...entry};renderNotes();page=positions[entry.id]||1;zoom=1;total=1;updatePageUI();try{const file=await readDocumentFile(entry);if(previous)await previous.loadingTask.destroy();if(token!==openToken)return;{const identity=await workspace.identify(entry,file);if(token!==openToken)return;documentRecords=documentRecords.filter(d=>d.id!==identity.id).concat(identity);current={...entry,revision:identity.revision,documentId:identity.id};renderNotes();if(/\.pdf$/i.test(entry.name)){pdfLib??=await import('/vendor/build/pdf.mjs');pdfLib.GlobalWorkerOptions.workerSrc='/vendor/build/pdf.worker.mjs';const loaded=await pdfLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),cMapUrl:'/vendor/cmaps/',cMapPacked:true,standardFontDataUrl:'/vendor/standard_fonts/',wasmUrl:'/vendor/wasm/'}).promise;if(token!==openToken){await loaded.loadingTask.destroy();return;}pdf=loaded;total=pdf.numPages;pdfOCR=createPDFOCR({pdf,entry:{...current},store:workspace,onPage:()=>{if(token===openToken)documentIndex=null;}});}else{textPages=await readTextDocument(file);total=textPages.length;}}if(token!==openToken)return;page=Math.max(1,Math.min(page,total));await renderPage();if(token===openToken)documentReady=true;renderLibrary();}catch(e){if(token!==openToken)return;if(previous)await previous.loadingTask.destroy().catch(()=>{});const box=node('div',undefined,{className:'empty-state'});box.append(node('p',fileReadMessage(e,language()==='en')),button(ui('重试','Retry'),()=>openDocument(entry)));const picker=document.createElement('input');picker.type='file';picker.accept=DOCUMENT_ACCEPT;picker.hidden=true;box.append(button(ui('重新选择文件','Locate file'),()=>picker.click()),picker);picker.onchange=guard(async()=>{const chosen=picker.files[0];if(!chosen)return;const copy=await snapshotFile(chosen);if(token!==openToken)return;const replacement={id:entry.id,name:chosen.name,path:entry.path||'',blob:copy,kind:'file'};await dbOp('files','put',replacement);folderEntries=folderEntries.filter(item=>item.id!==entry.id);await refreshCache();if(token===openToken)await openDocument(replacement);});$('documentContent').replaceChildren(box);pageText='';}}
 let activeLayout=null,selectionControls=null;
 async function renderPage(){
  if($('readerViewport').clientWidth<100||!$('readerViewport').clientHeight)return;
@@ -249,7 +255,7 @@ async function renderPage(){
  });readerView=view;await view.init(page,saved.page===page?saved.offset:0);
 }
 async function changePage(p,{keepConversation=false}={}){
- const next=Math.max(1,Math.min(total,Number(p)||1));if(next!==page&&!keepConversation)endConversation();
+ const next=Math.max(1,Math.min(total,Number(p)||1));
  if(readingMode==='continuous'&&readerView){getSelection()?.removeAllRanges();clearSelectionDock();await readerView.jump(next);return;}
  readerView?.destroy();readerView=null;page=next;readerOffsets[current.id]={page,offset:0};await renderPage();
 }
@@ -266,10 +272,13 @@ document.addEventListener('selectionchange',()=>{
  if(layout&&first===last){const blocks=[...first.querySelectorAll('.semantic-block[data-block]')].filter(el=>range.intersectsNode(el)).map(el=>el.dataset.block);selected={...selected,selectionMethod:'blocks',blockIds:blocks,blockContext:blockContext(layout,blocks),rect:layout.blocks.find(b=>b.id===blocks[0])?.rect};}
  showSelectionDock();
 });
-function setQuote(q){quote=q;$('quote').hidden=!q;if(q){$('quoteSource').textContent=sourceLabel(q);$('quoteText').textContent=q.text;$('prompt').focus();}}
+function setQuote(q){$('quote').querySelector('img')?.remove();quote=q;$('quote').hidden=!q;if(q){$('quoteSource').textContent=sourceLabel(q);$('quoteText').textContent=q.text||(q.regionId?ui('已引用图片','Image attached'):'');$('prompt').focus();}}
 $('citeSelection').onmousedown=e=>e.preventDefault();$('selectRegion').onclick=guard(()=>navigation.region());
 $('citeSelection').onclick=()=>selected?reviewSelection({...selected}):toast('先在左侧选中一段文字。');$('clearQuote').onclick=()=>{draftSource=null;setQuote(null);composer?.staged(false);};
-$('learning').ondragover=e=>{e.preventDefault();$('learning').classList.add('drag-over');};$('learning').ondragleave=e=>{if(!$('learning').contains(e.relatedTarget))$('learning').classList.remove('drag-over');};$('learning').ondrop=guard(async e=>{e.preventDefault();$('learning').classList.remove('drag-over');if(e.dataTransfer.files.length){await importFiles(e.dataTransfer.files);dropFeedback($('learning'),e);showLibrary();return;}const text=e.dataTransfer.getData('text/plain').trim();if(text){const same=readerDrag&&e.dataTransfer.getData('application/x-folio-selection')===readerDrag.token&&readerDrag.source.text===text&&readerDrag.source.id===current.id;setAICollapsed(false);dropFeedback($('learning'),e);visualizeSelection(same?{...readerDrag.source}:{text:text.slice(0,16000),name:'拖入的文字',id:null,page:'—',external:true});readerDrag=null;}});
+$('learning').ondragover=e=>{if([...e.dataTransfer.types].includes('Files'))return;e.preventDefault();$('learning').classList.add('drag-over');};
+$('learning').ondragleave=e=>{if(!$('learning').contains(e.relatedTarget))$('learning').classList.remove('drag-over');};
+$('learning').ondrop=e=>{e.preventDefault();$('learning').classList.remove('drag-over');const source=sourceFromTransfer(e.dataTransfer);if(source){setAICollapsed(false);dropFeedback($('learning'),e);guard(()=>visualizeSelection(source))();readerDrag=null;}};
+
 let readerDrag=null;
 $('documentContent').ondragstart=e=>{const s=getSelection()?.toString().trim().slice(0,16000);if(s){readerDrag={token:crypto.randomUUID(),source:{...(selected?.text===s?selected:readingSource()),text:s}};e.dataTransfer.setData('text/plain',s);e.dataTransfer.setData('application/x-folio-selection',readerDrag.token);}};
 $('documentContent').ondragend=()=>{readerDrag=null;};
@@ -317,10 +326,12 @@ const notebook=setupNotebook({notes,entries,documents:()=>documentRecords,collec
 const artifacts=createArtifactWorkspace({store:workspace,host:$('visualStage'),renderMath,onExpand:()=>setCanvasFocus(!document.body.classList.contains('canvas-focus')),onSave:record=>openStudyNote(record,{ask:hasKey()?((messages,signal)=>askAPI({...settings,responseFormat:'json'},messages,signal)):null,answerLanguage:readLocal('folio-answer-language','auto'),renderMath,onSave:(draft,snapshot)=>addNote(draft.title+'\n\n'+draft.text,snapshot.source,{kind:'folio-artifact',record:snapshot})}),onSource:openSource,onOpen:activateArtifact,onRequestView:kind=>{const source=artifacts.current?.source;if(source)return visualizeSelection(source,true,{followup:true,question:learningRequest(kind)});},render:async(host,version,source,onState)=>{
  setAICollapsed(false);setTab('visual');const answer=mountReadingAnswer(host,version.answer,{onPage:number=>openSource({...source,page:number})});renderMath(answer);const stage=document.createElement('div');stage.className='artifact-renderer';host.append(stage);return mountArtifactVisual(stage,version,{source,onState,renderMath,onSave:(text,snapshot)=>{if(snapshot)onState(snapshot);addNote(text,source,{kind:'folio-artifact',record:artifacts.current});}});
 }});
-async function activateArtifact(record){endConversation();const entry=sourceEntry(record.source,entries(),documentRecords);if(entry&&(current.id!==entry.id||!documentReady)){await openDocument(entry);if(!record.source.revision||record.source.revision===current.revision)await changePage(record.source.page||1,{keepConversation:true});}else if(!entry&&!documentReady){$('documentContent').replaceChildren(node('p',ui('原文未连接，作品仍可使用。点击「回到原文」重新定位。','Source not connected. The artifact remains available; use Source to relink.')));}const v=record.versions[record.cursor];conversations.begin(record.source,v.answer.title);conversations.complete(conversations.current.id,v.answer.title,v.answer,v.plan);setAICollapsed(false);showReader();setQuote(record.source);await artifacts.show(record);}
+async function activateArtifact(record){requestController?.abort();const entry=sourceEntry(record.source,entries(),documentRecords);if(entry&&(current.id!==entry.id||!documentReady)){await openDocument(entry);if(!record.source.revision||record.source.revision===current.revision)await changePage(record.source.page||1,{keepConversation:true});}else if(!entry&&!documentReady){$('documentContent').replaceChildren(node('p',ui('原文未连接，作品仍可使用。点击「回到原文」重新定位。','Source not connected. The artifact remains available; use Source to relink.')));}const v=record.versions[record.cursor];conversations.ensure(record.source,v.answer.title);if(!conversations.current.turns.some(t=>t.artifactId===record.id)){conversations.complete(conversations.current.id,v.answer.title,v.answer,v.plan,{source:record.source});conversations.updateTurn(conversations.current.id,conversations.current.turns.at(-1).id,{artifactId:record.id});}renderConversationHistory();setAICollapsed(false);showReader();setQuote(record.source);await artifacts.show(record);showSelfCheck(conversations.current.turns.find(t=>t.artifactId===record.id)||conversations.current.turns.at(-1));}
 async function openSource(source){if(!source?.id&&!source?.documentId){toast('这段内容没有关联本地文献。');return;}let entry=sourceEntry(source,entries(),documentRecords);if(!entry)entry=await manager.relink({...source,id:source.id||source.documentId});if(!entry)return;const preserved=artifacts.current;if(current.id!==entry.id||!documentReady){await openDocument(entry);if(preserved&&documentKey(preserved.source,documentRecords)===documentKey(source,documentRecords))await activateArtifact(preserved);}else showReader();if(source.revision&&source.revision!==current.revision){toast('原文内容已变化，旧引用仍保留，未跳转到可能错误的位置。');return;}await changePage(source.page||1,{keepConversation:true});if(source.rect){const page=document.querySelector('[data-page="'+(source.page||1)+'"].pdf-page');if(page){const marker=document.createElement('div');marker.className='source-region';Object.assign(marker.style,{left:source.rect[0]*100+'%',top:source.rect[1]*100+'%',width:source.rect[2]*100+'%',height:source.rect[3]*100+'%'});page.append(marker);}}}
 function updateMemoryUI(){$('memoryShortcut').textContent=t('自动整理：'+(rememberConversations?'开启':'关闭'));}
 function endConversation(){
+ chatEpoch++;historyVisible=20;
+ for(const controller of quizControllers)controller.abort();quizControllers.clear();disposeQuiz?.();disposeQuiz=null;$('selfCheck').replaceChildren();$('conversationHistory').replaceChildren();
  draftSource=null;
  artifacts.clear();
  requestController?.abort();requestController=null;conversations.reset();setBusy(false);clearScene();setQuote(null);$('conversationContext').hidden=true;$('conversationTopic').textContent='';$('prompt').value='';composer?.reset();selected=null;getSelection()?.removeAllRanges();
@@ -348,11 +359,11 @@ const collectionUI=setupCollections({collections,entries,items:()=>libraryItems,
 const itemUI=setupLibraryItems({items:libraryItems,entries,documents:()=>documentRecords,onOpen:openDocument,notes:item=>notesInScope(notes,{kind:'item',id:item.id},collections,documentRecords,libraryItems),onSave:item=>{const next=libraryItems.filter(i=>i.id!==item.id).concat(item);validateItems(next);libraryItems.splice(0,libraryItems.length,...next);saveLocal('folio-library-items',libraryItems);renderLibrary();renderNotes();},onImport:async files=>{const added=[];for(const file of files){if(!supports(file.name)||file.size>200*1024*1024)throw Error(ui('附件需为不超过 200 MB 的 PDF、DOCX、TXT 或 Markdown。','Use PDF, DOCX, TXT or Markdown attachments up to 200 MB.'));}for(const file of files){const entry={id:'local:'+crypto.randomUUID(),name:file.name,blob:await snapshotFile(file),path:ui('导入附件','Imported attachment')};await dbOp('files','put',entry);added.push(entry);}await refreshCache();return added;}});
 $('editLibraryItem').onclick=()=>{const entry=entries().find(e=>e.id===selectedDocument);if(entry)itemUI.edit(entry);};
 async function init(){enhanceSelects();enhanceSegments();hydrateIcons();if(!window.folioDesktop){try{serverKey=(await (await fetch('/api/status')).json()).configured===true;modelSettings.setServerKey(serverKey);}catch{}}updateModel();renderNotes();try{await refreshCache();folder=await dbOp('meta','get','folder');folderEntries=await restoredCatalog(folder,await dbOp('meta','get','folder-catalog'));updateFolderUI();renderLibrary();if(folder&&await folder.queryPermission({mode:'read'})==='granted')await scanFolder();}catch(error){toast(folder?fileReadMessage(error,language()==='en'):ui('本地库暂时不可用，请检查浏览器存储权限。','Local library unavailable. Check browser storage permissions.'));}finally{await window.folioDesktop?.finishLibraryRestore?.();}updateFolderUI();renderLibrary();}
-init().then(()=>{resetVisual();setTab('visual');routeNotes();});
+init().then(async()=>{const restoreRoute=location.hash;if(conversations.current?.turns.length){const source=conversations.current.source,entry=sourceEntry(source,entries(),documentRecords);if(entry)await openDocument(entry);else{showReader();$('readerTabGroup').hidden=false;}const saved=conversations.current.artifact?.record,record=saved?(await workspace.get('artifacts',saved.id)||saved):null;if(record)await artifacts.show(record);else resetVisual();renderConversationHistory();showSelfCheck(conversations.current.turns.at(-1));scrollToCurrentAnswer();}else resetVisual();setTab('visual');if(restoreRoute.startsWith('#/notes'))history.replaceState(null,'',location.pathname+restoreRoute);routeNotes();}).catch(error=>toast(error.message));
 
 const manager=setupWorkspaceManager({store:workspace,dbOp,entries,refresh:refreshCache,notes,saveNotes:()=>{saveLocal('jianwei-notes',notes);renderNotes();},openDocument});
 const zoteroButton=button('Zotero',()=>manager.importedLibrary());zoteroButton.className='connect-folder';document.querySelector('.library-sidebar').insertBefore(zoteroButton,document.querySelector('.sidebar-bottom'));
-const updates=setupUpdates({beforeRestart:async()=>{if(document.querySelector('dialog[open]:not(.update-dialog), .note-edit-workspace'))throw Error(ui('请先保存并关闭其他编辑窗口。','Save and close other editing dialogs first.'));document.activeElement?.blur();await workspace.snapshot();await dbOp('files','getAll');}});
+const updates=setupUpdates({beforeRestart:async()=>{await chatSave;if(document.querySelector('dialog[open]:not(.update-dialog), .note-edit-workspace'))throw Error(ui('请先保存并关闭其他编辑窗口。','Save and close other editing dialogs first.'));document.activeElement?.blur();await workspace.snapshot();await dbOp('files','getAll');}});
 const checkUpdates=updates.open;
 window.addEventListener('folio-feature',e=>{const action={artifacts:()=>artifacts.browse(),backup:manager.exportBackup,restore:manager.importBackup,rollback:manager.rollback,zotero:manager.zotero,updates:checkUpdates}[e.detail];if(action)guard(action)();});
 let disposeScene=null;
@@ -385,10 +396,10 @@ function renderPlan(plan,source){
  else if(['clarify','unsupported'].includes(plan.kind)){$('visualStage').innerHTML='<div class="visual-error"><h2>'+esc(plan.kind==='clarify'?'需要补充一点信息':'这个实验还未支持')+'</h2><p>'+esc(plan.reason)+'</p><p>可以在下方补充说明，原文引用仍然保留。</p></div>';}
 }
 async function visualizeSelection(source,forceQuestion=false,{followup=false,question=source.text,outputMode=null}={}){
- await keyReady;
- if(!followup||!conversations.current||conversations.current.source.id!==source.id){endConversation();conversations.begin(source,question);}
- const baseArtifact=followup?artifacts.current:null;if(!baseArtifact)artifacts.suspend();
- const sessionToken=conversations.current.id;$('conversationContext').hidden=false;$('conversationTopic').textContent='当前问题：'+conversations.current.question;$('conversationTopic').title=conversations.current.question;
+ const epoch=chatEpoch;await keyReady;if(epoch!==chatEpoch)return;
+ conversations.ensure(source,question);
+ const candidate=artifacts.current;const baseArtifact=followup&&candidate&&candidate.source.id===source.id&&candidate.source.text===source.text&&candidate.source.regionId===source.regionId?candidate:null;if(!baseArtifact)artifacts.suspend();
+ const sessionToken=conversations.current.id;renderConversationHistory();
  requestController?.abort();requestController=null;setBusy(false);setAICollapsed(false);
  clearScene();showDocumentContext(null);setQuote(source.text?source:null);setTab('visual');$('visualPanel').scrollTop=0;
  if(!hasKey()&&!/^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(settings.baseUrl)){if(baseArtifact){toast('请在设置中连接模型服务。');return;}$('visualStage').innerHTML='<div class="visual-error"><h2>连接模型后分析这段原文</h2><p>你的选段已保留，请在设置中连接模型服务。</p><button id="connectForGraph">连接模型</button></div>';$('connectForGraph').onclick=()=>$('settingsButton').click();return;}
@@ -397,19 +408,21 @@ async function visualizeSelection(source,forceQuestion=false,{followup=false,que
   let context=null;
   if(($('includePage').checked||source.selectionMethod==='blocks')&&contextBelongsToSource(source,current)){
    setPhase('正在查阅原文');
-   if(pdfOCR){await pdfOCR.recognize(Number(source.page)||page,{signal:controller.signal});documentIndex=null;}
+   if(pdfOCR){try{await pdfOCR.recognize(Number(source.page)||page,{signal:controller.signal});}catch(error){if(controller.signal.aborted||!usesVision(settings))throw error;}documentIndex=null;}
    context=await getDocumentIndex().retrieve((source.text||'')+'\n'+question,Number(source.page)||page,{signal:controller.signal,onProgress:(done,count)=>setPhase('正在查阅原文 · '+done+' / '+count+' 页')});
    context.anchorPage=Number(source.page)||page;context.selectionAnchor=source.blockContext;if(source.blockContext?.text){context.excerpts.unshift({page:source.blockContext.page,text:source.blockContext.text});context.text='[选段所在章节与相邻段落]\n'+source.blockContext.heading+'\n'+source.blockContext.text+'\n'+context.text;}
   }
   if(controller.signal.aborted)return;showDocumentContext(context);setPhase('正在结合原文解释选段');
-  const ask=messages=>askAPI({...settings,responseFormat:'json',maxTokens:8192},messages,controller.signal);
-  const response=await requestStructured(ask,requestReading(source.text,context,{question,history:conversations.history(),artifact:baseArtifact?baseArtifact.versions[baseArtifact.cursor]:null,answerLanguage:readLocal('folio-answer-language','auto'),outputMode}),(raw,{attempt})=>parseReading(raw,context?.excerpts||[],{strictPlan:attempt===0,question,outputMode,artifact:baseArtifact?.versions[baseArtifact.cursor]}),{signal:controller.signal,onRepair:()=>setPhase('正在整理回答格式')});if(controller.signal.aborted||!conversations.isCurrent(sessionToken))return;let plan=response.plan;
+  source=await prepareVisionSource(source,question,controller.signal);
+  const images=await conversationImages(source,controller.signal);
+  const ask=messages=>{assertContextFits(messages);return askAPI({...settings,responseFormat:'json',maxTokens:8192},messages,controller.signal);};
+  const response=await requestStructured(ask,withImages(requestReading(source.text||'',context,{question,history:conversations.history(),artifact:baseArtifact?baseArtifact.versions[baseArtifact.cursor]:null,answerLanguage:readLocal('folio-answer-language','auto'),outputMode,hasImages:images.length>0}),images),(raw,{attempt})=>parseReading(raw,context?.excerpts||[],{strictPlan:attempt===0,question,outputMode,artifact:baseArtifact?.versions[baseArtifact.cursor]}),{signal:controller.signal,onRepair:()=>setPhase('正在整理回答格式')});if(controller.signal.aborted||!conversations.isCurrent(sessionToken))return;let plan=response.plan;
   try{if(response.action!=='revise')plan=verifyPlanAgainstSource(plan,baseArtifact&&plan.kind==='permutation'?question:source.text+'\n'+response.parameterEvidence.map(e=>e.quote).join('\n'));}catch{plan={kind:'explain',object:response.answer.title,reason:'已展示原文解读，参数存在不同定义，暂不混合计算。'};}
-  conversations.complete(sessionToken,question,response.answer,plan);conversations.setArtifact(sessionToken,plan);
+  conversations.complete(sessionToken,question,response.answer,plan,{source,context});renderConversationHistory();showSelfCheck(conversations.current.turns.at(-1));conversations.setArtifact(sessionToken,plan);
 
   pending.remove();
-  if(baseArtifact&&plan.kind==='explain'&&response.action!=='revise'&&!requestsArtifactEdit(question)){await artifacts.appendDiscussion(question,response.answer,baseArtifact);return;}
-  const accepted=await artifacts.accept(source,plan,response.answer,response.visual,baseArtifact);const acceptedVersion=accepted.versions[accepted.cursor].id;
+  if(baseArtifact&&plan.kind==='explain'&&response.action!=='revise'&&!requestsArtifactEdit(question)){await artifacts.appendDiscussion(question,response.answer,baseArtifact);conversations.setArtifact(sessionToken,{kind:'folio-artifact',record:artifacts.current});conversations.updateTurn(sessionToken,conversations.current.turns.at(-1).id,{artifactId:baseArtifact.id});return;}
+  const accepted=await artifacts.accept(source,plan,response.answer,response.visual,baseArtifact);const acceptedVersion=accepted.versions[accepted.cursor].id;conversations.updateTurn(sessionToken,conversations.current.turns.at(-1).id,{artifactId:accepted.id});
   conversations.setArtifact(sessionToken,{kind:'folio-artifact',record:artifacts.current});
   if(plan.kind==='concept'&&!response.visual){
    setPhase('解读已完成，正在整理关系图');
@@ -420,14 +433,84 @@ async function visualizeSelection(source,forceQuestion=false,{followup=false,que
   }
 
  }catch(e){if(controller.signal.aborted)return;pending.remove();const error=node('div',undefined,{className:'visual-error'});error.append(node('h2',ui('暂时无法可靠生成','Could not complete the response')),node('p',e instanceof SyntaxError?ui('模型返回的格式仍不完整，请重试。','The model returned an incomplete response. Try again.'):e.message),button(ui('重试','Retry'),()=>{error.remove();return visualizeSelection(source,true,{followup:true,question,outputMode});}));if(!artifacts.current)$('visualStage').replaceChildren();$('visualStage').append(error);}
- finally{pending.remove();if(requestController===controller){requestController=null;setBusy(false);}}
+ finally{pending.remove();if(requestController===controller){requestController=null;setBusy(false);scrollToCurrentAnswer();}}
 }
 composer=setupPromptComposer({wrap:document.querySelector('.composer-wrap'),input:$('prompt'),form:$('chatForm'),onDropSource:stageSource,sourceFromTransfer});
 function stageSource(source){draftSource={...source};setAICollapsed(false);setQuote(draftSource);composer.staged(true);getSelection()?.removeAllRanges();clearSelectionDock();$('prompt').focus();}
-function sourceFromTransfer(transfer){const text=transfer.getData('text/plain').trim();if(!text)return null;const same=readerDrag&&transfer.getData('application/x-folio-selection')===readerDrag.token&&readerDrag.source.text===text&&readerDrag.source.id===current.id;return same?{...readerDrag.source}:{text:text.slice(0,16000),name:ui('拖入的文字','Dropped text'),id:null,page:'—',external:true};}
-$('chatForm').onsubmit=e=>{e.preventDefault();if(requestController)return;const {text,outputMode}=composer.take();if(!text&&!draftSource&&!outputMode)return;const source=draftSource||quote?{...(draftSource||quote),builtin:false}:conversations.current?{...conversations.current.source,builtin:false}:{text:'',name:current.name,id:current.id,documentId:current.documentId,revision:current.revision,page};if(!text&&!source.text)return;const followup=!draftSource&&Boolean(conversations.current);draftSource=null;$('prompt').value='';composer.reset();visualizeSelection(source,true,{followup,question:text||ui('请解释这段原文。','Explain this passage.'),outputMode});};
+let disposeQuiz=null,historyVisible=20,shownQuizTurn=null;const quizControllers=new Set();
+function scrollToCurrentAnswer(){const panel=$('visualPanel'),stage=$('visualStage');if(!panel.hidden)panel.scrollTop+=stage.getBoundingClientRect().top-panel.getBoundingClientRect().top;}
+function renderConversationHistory(){
+ const turns=conversations.current?.turns||[],host=$('conversationHistory');host.replaceChildren();
+ $('conversationContext').hidden=!conversations.current;
+ $('conversationTopic').textContent=ui('同一聊天','Same chat')+' · '+turns.length+ui(' 轮',' turns')+' · ≈'+estimateTokens(JSON.stringify(conversations.history())).toLocaleString()+' / 1M tokens';
+ $('conversationTopic').title=ui('上下文为估算值；实际模型上限由服务商决定。点击右上角 ＋ 才会新建聊天。','Estimated context; provider limits apply. Only the top-right + starts a new chat.');
+ if(!turns.length)return;
+ if(turns.length>historyVisible)host.append(button(ui('显示更早的对话','Show earlier turns'),()=>{historyVisible+=20;renderConversationHistory();}));
+ for(const turn of turns.slice(-historyVisible)){
+  const details=node('details',undefined,{className:'conversation-turn'}),summary=node('summary');summary.title=turn.question||turn.answer.title;summary.append(node('span',turn.question||turn.answer.title),node('small',sourceLabel(turn.source||{})));details.append(summary);details.dataset.turnId=turn.id;
+  details.addEventListener('toggle',()=>{if(!details.open||details.dataset.loaded)return;details.dataset.loaded='true';const content=node('div',undefined,{className:'conversation-turn-body'});details.append(content);mountReadingAnswer(content,turn.answer,{onPage:page=>openSource({...turn.source,page})});renderMath(content);
+   if(turn.artifactId)content.append(button(ui('打开这轮画布','Open this canvas'),guard(async()=>{const record=await workspace.get('artifacts',turn.artifactId);if(record){setQuote(turn.source);await artifacts.show(record);showSelfCheck(turn);scrollToCurrentAnswer();}})));
+  });host.append(details);
+ }
+}
+function showSelfCheck(turn){
+ disposeQuiz?.();shownQuizTurn=turn?.id;$('selfCheck').replaceChildren();if(!turn)return;
+ const token=conversations.current.id;
+ disposeQuiz=mountSelfCheck($('selfCheck'),turn,{renderMath,onAttempt:attempt=>conversations.updateTurn(token,turn.id,{quizAttempt:attempt}),generate:async type=>{
+  if(!conversations.isCurrent(token))throw Error(ui('请在当前聊天出题。','Use the current chat.'));
+  const controller=new AbortController();quizControllers.add(controller);
+  try{const images=await conversationImages(turn.source,controller.signal),prompt=withImages(quizPrompt(turn,type,readLocal('folio-answer-language','auto'))+'\n'+JSON.stringify({conversation:conversations.history()}),images);
+   const q=await requestStructured(messages=>{assertContextFits(messages);return askAPI({...settings,responseFormat:'json',maxTokens:2048},messages,controller.signal);},prompt,raw=>parseQuiz(raw,type),{signal:controller.signal});
+   if(!conversations.isCurrent(token))throw new DOMException('Stopped','AbortError');conversations.updateTurn(token,turn.id,{quiz:q,quizAttempt:null});requestAnimationFrame(()=>{if(conversations.isCurrent(token)&&shownQuizTurn===turn.id)$('selfCheck').scrollIntoView({block:'nearest'});});return q;
+  }finally{quizControllers.delete(controller);}
+ }});
+}
+async function prepareVisionSource(source,question,signal){
+ if(signal.aborted)throw new DOMException('Stopped','AbortError');
+ if(source.image)source=await persistSelection(source);
+ if(!usesVision(settings)){
+  if(source.regionId&&!source.text?.trim()){const region=await workspace.get('regions',source.regionId);if(!region)throw Error('引用图片已不可用，请重新拖入。');setPhase(ui('正在识别图片文字','Recognizing image text'));const text=await recognizeImage(region.image,{signal});if(!text.trim())throw Error('本地 OCR 未识别出文字，请选择支持视觉的模型或补充图片内容。');return {...source,text,ocr:true};}
+  return source;
+ }
+ if(source.regionId||!pdf||!contextBelongsToSource(source,current))return source;
+ const number=Number(source.page)||page,ocr=await pdfOCR?.cached(number);
+ if(!ocr?.ocr&&!source.ocr&&!/图片|图表|图中|图像|公式|figure|image|diagram|formula/i.test(question))return source;
+ const pdfAtStart=pdf,entry={...current},rect=source.selectionMethod==='region'?source.rect:undefined,key='vision:'+entry.documentId+':'+entry.revision+':'+number+':'+(rect?.join(',')||'page');
+ if(!await workspace.get('regions',key)){const image=await imageFromPDF(pdfAtStart,number,{rect,signal});await workspace.put('regions',{id:key,source:{id:entry.id,documentId:entry.documentId,revision:entry.revision,name:entry.name,page:number,...(rect?{rect}:{})},image});}
+ return {...source,regionId:key,vision:true};
+}
+async function conversationImages(source,signal){
+ if(!usesVision(settings))return [];
+ const refs=[...(conversations.current?.turns||[]).map((t,i)=>({source:t.source,label:ui('第 '+(i+1)+' 轮引用图片','Image from turn '+(i+1))})),{source,label:ui('本轮引用图片','Image for this question')}],seen=new Set(),images=[];
+ for(const ref of refs){if(signal?.aborted)throw new DOMException('Stopped','AbortError');const id=ref.source?.regionId;if(!id||seen.has(id))continue;seen.add(id);const region=await workspace.get('regions',id);if(!region)throw Error('历史引用图片已不可用，请重新导入图片或恢复完整备份。');images.push({image:region.image,label:ref.label+' · '+sourceLabel(ref.source)+' · '+id});}
+ return images;
+}
+async function stageImage(file){
+ const epoch=chatEpoch,image=await imageFromFile(file),source=await persistSelection({image,name:file.name,text:'',external:true,id:null});if(epoch!==chatEpoch)return;showReader();$('readerTabGroup').hidden=false;stageSource(source);$('quoteText').textContent=ui('图片已加入，将随问题读取。','Image attached for your question.');
+ const preview=node('img',undefined,{src:image,alt:file.name,className:'quote-image-preview'});$('quote').querySelector('img')?.remove();$('quote').append(preview);
+}
+let fileDropPending=false;
+const dropOverlay=node('div',ui('松开导入文件夹或文献','Drop a folder or documents to import'),{className:'file-drop-overlay',hidden:true});document.body.append(dropOverlay);
+const fileDrag=e=>[...e.dataTransfer?.types||[]].includes('Files');
+document.addEventListener('dragover',e=>{if(!fileDrag(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';dropOverlay.hidden=false;},true);
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)dropOverlay.hidden=true;},true);
+window.addEventListener('blur',()=>dropOverlay.hidden=true);document.addEventListener('dragend',()=>dropOverlay.hidden=true);
+document.addEventListener('drop',e=>{
+ dropOverlay.hidden=true;if(!fileDrag(e))return;e.preventDefault();e.stopImmediatePropagation();
+ if(fileDropPending||importPending){toast(ui('正在导入，请完成后再拖入。','Import in progress. Drop again when it finishes.'));return;}
+ const captured=captureDroppedItems(e.dataTransfer),plain=[...e.dataTransfer.files];
+ fileDropPending=true;
+ guard(async()=>{try{if(plain.length===1&&isImageFile(plain[0])){await stageImage(plain[0]);return;}
+  $('storageHint').textContent=ui('正在读取文件夹…','Reading folder…');const result=await readDroppedFiles(captured,supports,{onProgress:n=>$('storageHint').textContent=ui('已发现 '+n+' 篇文献','Found '+n+' documents')});
+  if(result.files.length){await importFiles(result.files,true);showLibrary();}else toast(ui('未找到 PDF、DOCX、TXT 或 Markdown 文献。','No PDF, DOCX, TXT or Markdown documents found.'));
+  $('storageHint').textContent=ui(`已扫描 ${result.files.length} 篇文献；跳过 ${result.skipped} 项${result.errors.length?'；'+result.errors.length+' 项读取失败':''}`,`Scanned ${result.files.length} documents; skipped ${result.skipped}; unreadable ${result.errors.length}`);
+ }finally{fileDropPending=false;}})();
+},true);
+$('prompt').addEventListener('paste',e=>{const file=[...e.clipboardData?.files||[]].find(isImageFile);if(file){e.preventDefault();guard(()=>stageImage(file))();}});
+function sourceFromTransfer(transfer){const text=transfer.getData('text/plain').trim();if(!text)return null;const same=readerDrag&&transfer.getData('application/x-folio-selection')===readerDrag.token&&readerDrag.source.text===text&&readerDrag.source.id===current.id;return same?{...readerDrag.source}:{text:text.slice(0,16000),name:ui('拖入的文字','Dropped text'),id:null,external:true};}
+$('chatForm').onsubmit=e=>{e.preventDefault();if(requestController)return;const {text,outputMode}=composer.take();if(!text&&!draftSource&&!outputMode)return;const source=draftSource||quote?{...(draftSource||quote),builtin:false}:conversations.current&&(!documentReady||conversations.current.source.id===current.id)?{...conversations.current.source,builtin:false}:{text:'',name:current.name,id:current.id,documentId:current.documentId,revision:current.revision,page};if(!text&&!source.text&&!source.regionId)return;const followup=!draftSource&&Boolean(conversations.current);draftSource=null;$('prompt').value='';composer.reset();visualizeSelection(source,true,{followup,question:text||ui('请解释这段原文。','Explain this passage.'),outputMode});};
 $('stopButton').onclick=()=>{requestController?.abort();requestController=null;setBusy(false);$('visualStage').querySelectorAll('.visual-loading').forEach(e=>e.remove());$('visualStage').append(node('p',ui('已停止生成。','Generation stopped.'),{className:'muted'}));};
-$('newChat').onclick=$('startQuestion').onclick=()=>{endConversation();$('prompt').focus();};
+$('newChat').onclick=()=>{endConversation();$('prompt').focus();};
 
 // Capture an already-selected passage so dragging is consistent across HTML and PDF text layers.
 let passageDrag=null;

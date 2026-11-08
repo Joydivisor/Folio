@@ -47,14 +47,14 @@ export function selectReadingRegion({getState,store,addNote,visualize,onClose=()
   const source={id:initial.entry.id,documentId:initial.entry.documentId,revision:initial.entry.revision,name:initial.entry.name,page:initial.page,rect:chosen};
   let regionId=null;
   async function persist(){if(!same())throw Error(ui('原文页面已改变，请重新框选','The source page changed. Select again.'));if(image){regionId??=crypto.randomUUID();await store.put('regions',{id:regionId,source,image});}return {...source,...(regionId?{regionId}:{}),text:editor.value.trim(),selectionMethod:'region'};}
-  const send=button(ui('解读选区','Explain selection'),async()=>{if(!editor.value.trim())return;if(editor.value.length>16000)throw Error(ui('选区文字过长，请缩小范围或删减至 16000 字以内。','Selection too long. Reduce it to 16,000 characters.'));const s=await persist();close();await visualize(s);});
-  send.disabled=!editor.value.trim();editor.oninput=()=>{send.disabled=!editor.value.trim();};
+  const send=button(ui('解读选区','Explain selection'),async()=>{if(!editor.value.trim()&&!image)return;if(editor.value.length>16000)throw Error(ui('选区文字过长，请缩小范围或删减至 16000 字以内。','Selection too long. Reduce it to 16,000 characters.'));const s=await persist();close();await visualize(s,true,{question:s.text||ui('请解读这张图片，核对其中的文字和公式。','Explain this image and read its text and formulas.')} );});
+  send.disabled=!editor.value.trim()&&!image;editor.oninput=()=>{send.disabled=!editor.value.trim()&&!image;};
   if(canvas)actions.append(button(ui('识别图片文字','Recognize text'),async()=>{
    const token=++recognition,original=editor.value;status.textContent=ui('正在识别…','Recognizing…');send.disabled=true;
    try{if(!globalThis.Tesseract)await new Promise((resolve,reject)=>{const script=node('script',undefined,{src:'/ocr/tesseract.min.js'});script.onload=resolve;script.onerror=()=>reject(Error('OCR unavailable'));document.head.append(script);});if(closed||!root.open||token!==recognition)return;
     const w=await Tesseract.createWorker(['eng','chi_sim'],1,{workerPath:'/ocr/worker.min.js',corePath:'/ocr-core',langPath:'/ocr-data',workerBlobURL:false});if(closed||!root.open||token!==recognition){await w.terminate();return;}worker=w;const result=await w.recognize(canvas);await w.terminate();if(worker===w)worker=null;if(closed||!root.open||token!==recognition||!same())return;
     if(editor.value===original)editor.value=normalizeOCRText(result.data.text).slice(0,16000);status.textContent=ui('请对照图片校正公式和符号。','Check formulas and symbols against the image.');
-   }catch(error){if(root.open)status.textContent=ui('识别失败，可手动填写后继续。','Recognition failed. You can enter text manually.');}finally{if(root.open)send.disabled=!editor.value.trim();}
+   }catch(error){if(root.open)status.textContent=ui('识别失败，可手动填写后继续。','Recognition failed. You can enter text manually.');}finally{if(root.open)send.disabled=!editor.value.trim()&&!image;}
   }));
   actions.append(button(ui('调整范围','Adjust region'),()=>root.close()),button(ui('存为笔记','Save to notes'),async()=>{const s=await persist();addNote(editor.value.trim()||ui('原文选区','Source region'),s);close();}),send);body.append(actions);
   root.addEventListener('close',()=>{recognition++;worker?.terminate().catch(()=>{});worker=null;if(preview===root)preview=null;if(!closed)box.focus({preventScroll:true});});

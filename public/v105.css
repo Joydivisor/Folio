@@ -1,0 +1,28 @@
+.file-drop-overlay{position:fixed;inset:48px 12px 12px;z-index:9999;border:2px dashed var(--accent,#94754e);border-radius:16px;background:color-mix(in srgb,var(--pane,#faf8f5) 94%,transparent);color:var(--text,#292622);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;pointer-events:none}
+.file-drop-overlay[hidden]{display:none}
+/* History, the answer and its quiz share one vertical scroll flow. The old
+   flex:1 answer height let long prose paint over the following quiz. */
+.visual-panel{display:block;overflow-x:hidden}
+.visual-panel>.visual-stage{min-height:0}
+.conversation-history,#selfCheck,.reading-answer{min-width:0}
+.reading-answer{overflow-wrap:anywhere}
+.reading-answer .katex-display{max-width:100%;overflow-x:auto;overflow-y:hidden;padding-block:4px}
+.conversation-history:empty,#selfCheck:empty{display:none}
+.conversation-history{margin:12px 20px 8px;display:grid;gap:6px}
+.conversation-turn{border:1px solid var(--line,#ddd8cf);border-radius:10px;background:var(--pane,#faf8f5);overflow:hidden}
+.conversation-turn summary{padding:10px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px}
+.conversation-turn summary:before{content:'›';flex:none}.conversation-turn[open] summary:before{content:'⌄'}
+.conversation-turn summary span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1}
+.conversation-turn summary small{color:var(--muted,#7b756d);font-size:11px;max-width:35%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.conversation-turn-body{padding:0 14px 14px}.conversation-turn-body .reading-answer{padding:0;margin:0}
+.chat-budget-label{font-size:11px;color:var(--muted,#7b756d);flex:none}
+#selfCheck{margin:12px 20px 24px}.self-check{padding:16px;border:1px solid var(--line,#ddd8cf);border-radius:12px;background:var(--pane,#faf8f5)}
+.self-check h3{margin:0 0 8px;font-size:14px}.self-check p{font-size:13px;line-height:1.7}.self-check-status:empty{display:none}
+.self-check-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.self-check-actions button{font-size:12px;padding:7px 12px;border:1px solid var(--line,#ddd8cf);border-radius:8px;background:transparent;color:inherit;cursor:pointer}
+.self-check-actions button:disabled{opacity:.55;cursor:default}.quiz-form fieldset{border:0;padding:0;margin:0;min-width:0}.quiz-form legend{font-size:14px;line-height:1.6;margin:6px 0 10px}
+.quiz-option{display:flex;gap:10px;align-items:flex-start;padding:9px;border:1px solid var(--line,#ddd8cf);border-radius:8px;margin:6px 0;cursor:pointer;font-size:13px}
+.quiz-option input{margin-top:3px;accent-color:var(--accent,#94754e)}.quiz-form input[type=text]{width:100%;box-sizing:border-box;padding:9px;border:1px solid var(--line,#ddd8cf);background:transparent;color:inherit;border-radius:8px}
+.quiz-feedback{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#ddd8cf);font-size:13px}.quiz-feedback[hidden]{display:none}
+.quote-image-preview{max-height:112px;max-width:100%;object-fit:contain;margin-top:6px;border-radius:6px}
+html[data-theme=dark] .self-check,html[data-theme=dark] .conversation-turn{background:var(--pane,#25231f);border-color:var(--line,#48443e)}
+@media(max-width:700px){.conversation-history,#selfCheck{margin-left:10px;margin-right:10px}.conversation-turn summary small{display:none}}

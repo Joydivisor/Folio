@@ -8,6 +8,14 @@ const aborted=signal=>{if(signal?.aborted)throw new DOMException('OCR stopped','
 function cancellable(promise,signal){return new Promise((resolve,reject)=>{const stop=()=>{cleanup();reject(new DOMException('OCR stopped','AbortError'));},cleanup=()=>signal?.removeEventListener('abort',stop);signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)return stop();Promise.resolve(promise).then(v=>{cleanup();resolve(v);},e=>{cleanup();reject(e);});});}
 let runtime;
 function loadRuntime(){if(globalThis.Tesseract)return Promise.resolve(globalThis.Tesseract);return runtime??=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='/ocr/tesseract.min.js';s.onload=()=>resolve(globalThis.Tesseract);s.onerror=()=>{s.remove();runtime=null;reject(Error('Local OCR runtime unavailable'));};document.head.append(s);});}
+export async function recognizeImage(image,{signal}={}){
+ aborted(signal);const api=await cancellable(loadRuntime(),signal);aborted(signal);
+ const pending=api.createWorker(['chi_sim','eng'],1,{workerPath:'/ocr/worker.min.js',corePath:'/ocr-core',langPath:'/ocr-data',workerBlobURL:false});
+ pending.then(w=>{if(signal?.aborted)w.terminate().catch(()=>{});},()=>{});
+ const worker=await cancellable(pending,signal),cancel=()=>worker.terminate().catch(()=>{});signal?.addEventListener('abort',cancel,{once:true});
+ try{await worker.setParameters({tessedit_pageseg_mode:api.PSM.AUTO});const result=await cancellable(worker.recognize(image),signal);aborted(signal);return normalizeOCRText(result.data.text);}
+ finally{signal?.removeEventListener('abort',cancel);await worker.terminate().catch(()=>{});}
+}
 
 export function ocrWords(data,width,height){
  const words=[];

@@ -130,7 +130,7 @@ async function start() {
     const config = vault.config(data.config);
     if (!config.apiKey) throw new Error('请先在设置中填写密钥。');
     const controller = new AbortController(); pending.set(data.id, controller);
-    const timeout = setTimeout(() => controller.abort(), 125000);
+    const timeout = setTimeout(() => controller.abort(), 305000);
     try {
       const response = await fetch(ORIGIN + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: ORIGIN }, body: JSON.stringify({ ...config, messages: data.messages }), signal: controller.signal });
       const result = await response.json();
