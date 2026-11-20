@@ -26,16 +26,20 @@ async function main() {
   const version = JSON.parse(fs.readFileSync('package.json')).version;
   const [directory, metadataPath] = process.argv.slice(2);
   const remote = JSON.parse(fs.readFileSync(metadataPath));
-  if (remote.tag_name !== 'v' + version || remote.draft !== true) throw Error('Expected current release draft');
+  const api = 'https://api.github.com/repos/Joydivisor/Folio/releases/';
+  if (remote.tag_name !== 'v' + version || remote.draft !== true || remote.url !== api + remote.id) throw Error('Expected current Folio release draft');
   const chunks = []; for await (const chunk of process.stdin) chunks.push(chunk);
   const key = crypto.createPrivateKey({key: Buffer.from(Buffer.concat(chunks).toString().trim(), 'base64'), type: 'pkcs8', format: 'der'});
   if (!crypto.createPublicKey(key).equals(unix.publicKey())) throw Error('Signing key does not match the installed public key');
   const base = 'https://github.com/Joydivisor/Folio/releases/download/v' + version + '/';
+  // Before publication GitHub serves draft assets under its temporary untagged URL.
+  const draftTag = new URL(remote.html_url).pathname.split('/').pop();
+  const draftBase = /^untagged-[0-9a-f]+$/.test(draftTag) ? 'https://github.com/Joydivisor/Folio/releases/download/' + draftTag + '/' : base;
   for (const id of ['mac-arm64','mac-x64','linux-x64']) {
     const filename = 'Folio-' + version + '-' + id + (id === 'linux-x64' ? '.deb' : '.dmg');
     const bytes = fs.readFileSync(path.join(directory, filename));
     const asset = remote.assets.find(a => a.name === filename);
-    if (!asset || asset.state !== 'uploaded' || asset.browser_download_url !== base + filename || asset.size !== bytes.length || asset.digest !== 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex')) throw Error('Draft bytes do not match: ' + filename);
+    if (!asset || asset.state !== 'uploaded' || asset.url !== api+'assets/'+asset.id || ![base+filename,draftBase+filename].includes(asset.browser_download_url) || asset.size !== bytes.length || asset.digest !== 'sha256:' + crypto.createHash('sha256').update(bytes).digest('hex')) throw Error('Draft bytes do not match: ' + filename);
     const signed = signUpdate({version, id, bytes, key, base});
     fs.writeFileSync(path.join(directory, signed.name), signed.content);
     console.log('Signed ' + filename);
