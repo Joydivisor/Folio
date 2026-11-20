@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('folioDesktop', {
   finishLibraryRestore: () => ipcRenderer.invoke('folio:library-restored'),
   openDownload:url=>ipcRenderer.invoke('folio:open-download',url),
   updateState: () => ipcRenderer.invoke('folio:update-state'),
+  prepareUpdate: () => ipcRenderer.invoke('folio:update-prepare'),
   checkUpdate: () => ipcRenderer.invoke('folio:update-check'),
   downloadUpdate: () => ipcRenderer.invoke('folio:update-download'),
   installUpdate: () => ipcRenderer.invoke('folio:update-install'),

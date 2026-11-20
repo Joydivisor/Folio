@@ -4,6 +4,8 @@ import {execFileSync} from 'node:child_process';
 import {packager} from '@electron/packager';
 import {auditPackage} from './audit-package.mjs';
 import {electronPackageOptions} from './electron-cache.mjs';
+import {addSparkle} from './package-sparkle.mjs';
+import unixUpdater from '../desktop/unix-updater.cjs';
 const root=process.cwd(),platform=process.platform,arch=process.arch;
 if(!['darwin','linux'].includes(platform))throw Error('Build on macOS or Linux.');
 const {version}=JSON.parse(fs.readFileSync('package.json','utf8'));
@@ -24,6 +26,7 @@ const app=path.join(folder,'Folio.app'),resources=platform==='darwin'?path.join(
 await auditPackage(path.join(resources,'app.asar'),path.join(out,'package-audit.json'));
 const packaged=performance.now();
 if(platform==='darwin'){
+ addSparkle(app, arch);
  // Ad-hoc signing makes the Apple Silicon binary structurally valid; it is NOT Developer ID signing or notarization.
  run('codesign',['--force','--deep','--sign','-',app]);run('codesign',['--verify','--deep','--strict',app]);
  const stage=path.join(out,'dmg');fs.mkdirSync(stage,{recursive:true});
@@ -36,7 +39,11 @@ if(platform==='darwin'){
  permissions(stage);
  fs.chmodSync(path.join(install,'chrome-sandbox'),0o4755);
  const control=path.join(stage,'DEBIAN');fs.mkdirSync(control,{recursive:true});
- fs.writeFileSync(path.join(control,'control'),`Package: folio\nVersion: ${version.replace('-beta.','~beta.')}\nArchitecture: amd64\nMaintainer: Folio <noreply@getfolio.pages.dev>\nSection: education\nPriority: optional\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libxtst6, libatspi2.0-0, libdrm2, fonts-noto-cjk\nHomepage: https://getfolio.pages.dev/\nDescription: Local-first interactive reading workspace\n Read documents, annotate and explore concepts with your own AI service.\n`);
+ fs.writeFileSync(path.join(control,'control'),`Package: folio\nVersion: ${version.replace('-beta.','~beta.')}\nArchitecture: amd64\nMaintainer: Folio <noreply@getfolio.pages.dev>\nSection: education\nPriority: optional\nDepends: libc6 (>= 2.35), libgtk-3-0, libnss3, libasound2 | libasound2t64, libgbm1, libxss1, libxtst6, libatspi2.0-0, libdrm2, fonts-noto-cjk, pkexec | policykit-1, openssl (>= 3.0), python3, apt\nHomepage: https://getfolio.pages.dev/\nDescription: Local-first interactive reading workspace\n Read documents, annotate and explore concepts with your own AI service.\n`);
+ const helper=path.join(stage,'usr/lib/folio/install-update'),pub=path.join(stage,'usr/share/folio/update-public.pem');
+ fs.mkdirSync(path.dirname(helper),{recursive:true});fs.mkdirSync(path.dirname(pub),{recursive:true});
+ fs.copyFileSync('scripts/linux/install-update',helper);fs.chmodSync(helper,0o755);
+ fs.writeFileSync(pub,unixUpdater.publicKey().export({type:'spki',format:'pem'}));
  const applications=path.join(stage,'usr','share','applications'),icons=path.join(stage,'usr','share','icons','hicolor','512x512','apps');fs.mkdirSync(applications,{recursive:true});fs.mkdirSync(icons,{recursive:true});
  fs.copyFileSync(icon,path.join(icons,'folio.png'));
  fs.writeFileSync(path.join(applications,'folio.desktop'),'[Desktop Entry]\nName=Folio\nComment=Interactive reading workspace\nExec=/opt/Folio/Folio\nIcon=folio\nTerminal=false\nType=Application\nCategories=Education;Office;\nStartupWMClass=Folio\n');

@@ -1,0 +1,59 @@
+#!/usr/bin/python3 -I
+"""Install a newer signed Folio DEB after the desktop's PolicyKit authorization."""
+import base64
+import hashlib
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tempfile
+
+def install(version, size_text, digest, signature):
+    if (not re.fullmatch(r'[0-9]{1,8}\.[0-9]{1,8}\.[0-9]{1,8}', version)
+            or not re.fullmatch(r'[1-9][0-9]{0,9}', size_text)
+            or not re.fullmatch(r'[0-9a-f]{64}', digest)
+            or not re.fullmatch(r'[A-Za-z0-9+/]{86}==', signature)):
+        return 65
+    size = int(size_text)
+    if size > 1024 ** 3:
+        return 65
+    # Root-owned files under a private directory prevent replacement between
+    # verification and apt. Never let an unprivileged caller supply a path.
+    with tempfile.TemporaryDirectory(prefix='folio-install-', dir='/var/tmp') as scratch:
+        folder = Path(scratch)
+        statement = folder / 'release'
+        statement.write_bytes(f'Folio Debian amd64\n{version}\n{size}\n{digest}\n'.encode('ascii'))
+        sig = folder / 'signature'
+        sig.write_bytes(base64.b64decode(signature, validate=True))
+        verified = subprocess.run(['/usr/bin/openssl', 'pkeyutl', '-verify', '-rawin', '-pubin',
+                                   '-inkey', '/usr/share/folio/update-public.pem',
+                                   '-in', str(statement), '-sigfile', str(sig)])
+        if verified.returncode != 0:
+            return 65
+        installed = subprocess.check_output(['/usr/bin/dpkg-query', '-W', '-f=${Version}', 'folio'], text=True).strip()
+        if subprocess.run(['/usr/bin/dpkg', '--compare-versions', version, 'gt', installed]).returncode:
+            return 65
+        archive = folder / 'folio.deb'
+        hashed = hashlib.sha256()
+        remaining = size
+        with archive.open('xb') as output:
+            while remaining:
+                block = sys.stdin.buffer.read(min(remaining, 1024 * 1024))
+                if not block:
+                    return 65
+                output.write(block)
+                hashed.update(block)
+                remaining -= len(block)
+        if sys.stdin.buffer.read(1) or hashed.hexdigest() != digest:
+            return 65
+        fields = subprocess.check_output(['/usr/bin/dpkg-deb', '-f', str(archive), 'Package', 'Architecture', 'Version'], text=True).splitlines()
+        if set(fields) != {'Package: folio', 'Architecture: amd64', 'Version: ' + version}:
+            return 65
+        return subprocess.run(['/usr/bin/apt-get', '-y', '--no-remove', '-o', 'DPkg::Lock::Timeout=30',
+                               'install', str(archive)], stdin=subprocess.DEVNULL).returncode
+
+if __name__ == '__main__':
+    if os.geteuid() != 0 or len(sys.argv) != 5:
+        sys.exit(64)
+    sys.exit(install(*sys.argv[1:]))

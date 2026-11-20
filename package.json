@@ -1,6 +1,6 @@
 {
   "name": "folio",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Local-first reading workspace with continuous documents, interactive artifacts and model-independent illustrations",
   "main": "desktop/main.cjs",
   "scripts": {

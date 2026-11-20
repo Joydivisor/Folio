@@ -362,7 +362,17 @@ init().then(async()=>{const restoreRoute=location.hash;if(conversations.current?
 
 const manager=setupWorkspaceManager({store:workspace,dbOp,entries,refresh:refreshCache,notes,saveNotes:()=>{saveLocal('jianwei-notes',notes);renderNotes();},openDocument});
 const zoteroButton=button('Zotero',()=>manager.importedLibrary());zoteroButton.className='connect-folder';document.querySelector('.library-sidebar').insertBefore(zoteroButton,document.querySelector('.sidebar-bottom'));
-const updates=setupUpdates({beforeRestart:async()=>{await chatSave;if(document.querySelector('dialog[open]:not(.update-dialog), .note-edit-workspace'))throw Error(ui('请先保存并关闭其他编辑窗口。','Save and close other editing dialogs first.'));document.activeElement?.blur();await workspace.snapshot();await dbOp('files','getAll');}});
+const updates=setupUpdates({beforeRestart:async()=>{
+  if(document.querySelector('dialog[open]:not(.update-dialog), .note-edit-workspace'))return 'editing';
+  document.activeElement?.blur();
+  await chatSave;
+  const library=await dbPromise;
+  await Promise.all([workspace.flush(),new Promise((resolve,reject)=>{
+    const tx=library.transaction(['files','meta'],'readonly');
+    tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(tx.error);
+  })]);
+  return 'saved';
+}});
 const checkUpdates=updates.open;
 window.addEventListener('folio-feature',e=>{const action={artifacts:()=>artifacts.browse(),backup:manager.exportBackup,restore:manager.importBackup,rollback:manager.rollback,zotero:manager.zotero,updates:checkUpdates}[e.detail];if(action)guard(action)();});
 let disposeScene=null;

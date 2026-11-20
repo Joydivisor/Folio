@@ -5,7 +5,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import {spawn} from 'node:child_process';
-import {extractAll, createPackageWithOptions} from '@electron/asar';
+import {extractAll, extractFile, uncache, createPackageWithOptions} from '@electron/asar';
 import {build, Platform, Arch} from 'electron-builder';
 import {windowsInstallerConfig} from './installer-config.mjs';
 
@@ -68,6 +68,16 @@ try {
   console.log('Running real download, restart and V' + nextVersion + ' upgrade...');
   await run(path.join(target, name + '.exe'));
   const deadline = Date.now() + 180000;
+  if (!fs.existsSync(resultFile+'.quit')) throw Error('Installed fixture failed before quit: '+(fs.existsSync(resultFile)?fs.readFileSync(resultFile,'utf8'):'no result'));
+  const archive=path.join(target,'resources','app.asar');
+  while (true) {
+    let updated=false;
+    try {uncache(archive); updated=JSON.parse(extractFile(archive,'package.json')).version===nextVersion;} catch {}
+    if (updated && fs.existsSync(path.join(target,'Uninstall '+name+'.exe'))) break;
+    if (Date.now()>deadline) throw Error('Normal application quit did not install the update');
+    await new Promise(resolve=>setTimeout(resolve,500));
+  }
+  await run(path.join(target, name+'.exe'));
   while (!fs.existsSync(resultFile)) {if (Date.now() > deadline) throw Error('Updated app did not report a result.'); await new Promise(resolve => setTimeout(resolve, 500));}
   const result = JSON.parse(fs.readFileSync(resultFile));
   if (!result.passed) throw Error(result.error);

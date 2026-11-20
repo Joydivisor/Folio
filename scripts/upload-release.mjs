@@ -41,7 +41,7 @@ async function main() {
   const getRelease = async () => JSON.parse(await gh(['api', 'repos/' + repo + '/releases/' + releaseId], {retryRead: true}));
   assertDraft(await getRelease(), tag);
   const installers = new Set([`Folio-Setup-${version}-win-x64.exe`, `Folio-Setup-${version}-win-x64.zip`, `Folio-${version}-mac-arm64.dmg`, `Folio-${version}-mac-x64.dmg`, `Folio-${version}-linux-x64.deb`]);
-  const permitted = new Set([...installers, `Folio-Setup-${version}-win-x64.exe.blockmap`, 'latest.yml', 'SHA256SUMS.txt']);
+  const permitted = new Set([...installers, `Folio-Setup-${version}-win-x64.exe.blockmap`, 'latest.yml', 'appcast-mac-arm64.xml', 'appcast-mac-x64.xml', `Folio-${version}-linux-x64.deb.sig`, 'SHA256SUMS.txt']);
   const versioned = path.join('releases', 'v' + version);
   const paths = positionals.length ? positionals : [
     ...(fs.existsSync(versioned) ? fs.readdirSync(versioned).filter(name => permitted.has(name) && name !== 'SHA256SUMS.txt').map(name => path.join(versioned, name)) : []),

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7 · 2026-11-21
+
+- On installed Windows, macOS (Apple Silicon and Intel), and Ubuntu x64, one selection of Help → Check for updates downloads the stable update. Quit normally to install and reopen Folio to continue.
+- Folio waits for an in-progress download and saves the workspace before updating. An open editor or active AI request keeps the window open. macOS verifies signed disk images and Ubuntu verifies the signed DEB before system authorization and installation.
+
 ## 1.0.6 · 2026-11-20
 
 - The nine composer output choices each send a dedicated system prompt. Flowcharts validate their branches, concept maps include their links in the first completed answer, and the reading canvas checks the chosen format on every generation attempt.

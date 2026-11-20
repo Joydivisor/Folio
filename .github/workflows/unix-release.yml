@@ -18,7 +18,7 @@ env:
   electron_config_cache: ${{ github.workspace }}/.electron-cache
 jobs:
   build:
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +67,12 @@ jobs:
           FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a npm run test:v105-layout
           sudo apt-get remove -y folio
           test ! -e /opt/Folio/Folio
+      - name: Verify one Help action, ordinary quit and manual reopen on macOS
+        if: runner.os == 'macOS'
+        run: node scripts/test-unix-update.mjs
+      - name: Verify signed Debian upgrade and saved data on reopen
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node scripts/test-unix-update.mjs
       - name: Upload verified packages to the release draft
         id: release-upload
         if: inputs.release_tag != ''
@@ -87,6 +93,7 @@ jobs:
             dist/v*/release-upload.json
             dist/v*/release-preflight.json
             tests/reports/library-restart.json
+            tests/reports/update-install-*.json
             tests/reports/output-modes/ui.json
             tests/reports/v105/result.json
             tests/reports/v105-layout/result.json
