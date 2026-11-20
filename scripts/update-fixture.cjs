@@ -28,7 +28,7 @@ app.on('browser-window-created',(_event,win)=>{
     const monitor=setInterval(async()=>{
       if(win.isDestroyed())return;
       const state=await js('window.folioDesktop.updateState()').catch(()=>null);
-      if(state?.error){fs.writeFileSync(resultFile,JSON.stringify({passed:false,error:'Update failed: '+JSON.stringify(state)}));app.exit(1);}
+      if(state?.error){const error='Update failed: '+JSON.stringify(state);console.error(error);fs.writeFileSync(resultFile,JSON.stringify({passed:false,error}));app.exit(1);}
     },500);monitor.unref();
     win.close();
    }else{

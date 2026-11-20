@@ -6,7 +6,7 @@ export function setupUpdates({beforeRestart = async () => {}} = {}) {
   window.folioPrepareForUpdate = async () => {
     try {return await beforeRestart();} catch {return 'save';}
   };
-  let state, view, dismissed, dialogRoot;
+  let state, view, dismissed, dialogRoot, requested = false;
   const banner = node('aside', undefined, {className: 'update-banner', hidden: true});
   banner.setAttribute('aria-label', ui('软件更新', 'Software update'));
   document.body.append(banner);
@@ -26,7 +26,7 @@ export function setupUpdates({beforeRestart = async () => {}} = {}) {
     if (view) render();
     const key = state.version + ':' + state.status;
     document.body.inert = state.status === 'installing';
-    const visible = (['available', 'downloaded'].includes(state.status) || state.error) && dismissed !== key + ':' + state.error && !view;
+    const visible = (['available', 'downloaded'].includes(state.status) || requested && state.error) && dismissed !== key + ':' + state.error && !view;
     banner.hidden = !visible;
     if (visible) {
       const label = node('span', state.error ? ui(...(errors[state.error] || errors.check)) : state.status === 'downloaded' ? ui('更新已就绪，下次退出时安装。', 'Update ready. It will install when you quit.') : ui('发现新版本 ', 'New version available: ') + state.version);
@@ -56,6 +56,9 @@ export function setupUpdates({beforeRestart = async () => {}} = {}) {
     actions.replaceChildren();
     if (state.status === 'error') actions.append(button(ui('重试更新', 'Retry update'), () => desktop.prepareUpdate()));
     if (state.status === 'downloaded') actions.append(button(ui('现在退出并更新', 'Quit and update now'), () => desktop.installUpdate()));
+    if (state.status === 'downloaded' && ['authorization', 'cancelled', 'install'].includes(state.error)) {
+      actions.append(button(ui('这次退出时暂不安装', 'Skip installation this time'), async () => {await desktop.postponeUpdate(); dialogRoot?.close();}));
+    }
     if (state.status !== 'installing') actions.append(button(ui('关闭', 'Close'), () => view.root.close()));
   }
   async function manual(body) {
@@ -78,6 +81,7 @@ export function setupUpdates({beforeRestart = async () => {}} = {}) {
   }
   async function open() {
     if (dialogRoot?.open) {dialogRoot.focus(); return;}
+    requested = true;
     const {root, body} = modal(ui('软件更新', 'Software updates'));
     dialogRoot = root;
     root.addEventListener('close', () => {if (dialogRoot === root) dialogRoot = null;}, {once: true});

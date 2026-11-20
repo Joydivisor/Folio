@@ -30,7 +30,11 @@ function nativeRun(file, args, input) {
       pipeline(fs.createReadStream(input), child.stdin).catch(() => {});
     }
     child.once('error', reject);
-    child.once('close', code => code === 0 ? resolve() : reject(Object.assign(Error(stderr || 'Installer exited ' + code), {code})));
+    child.once('exit', code => {
+      // Sparkle leaves a separate installer alive until Folio quits.
+      child.stderr.destroy(); child.stdin?.destroy();
+      if (code === 0) resolve(); else reject(Object.assign(Error(stderr || 'Installer exited ' + code), {code}));
+    });
   });
 }
 class UnixUpdater extends EventEmitter {

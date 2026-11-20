@@ -5,6 +5,7 @@ node_modules/
 dist/
 .electron-cache/
 .installer-cache/
+.release-signing/
 .env.*
 !.env.example
 *key*.txt

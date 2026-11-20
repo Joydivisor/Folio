@@ -66,7 +66,14 @@ function createUpdateController({updater, version, reason = null, notify = () =>
     }).then(getState).finally(() => {installing = null;});
     return installing;
   }
-  return {getState, check, download, prepare, install,
+  function postpone() {
+    if (state.status === 'downloaded' && ['authorization', 'cancelled', 'install'].includes(state.error)) {
+      updater.dispose?.();
+      return set({status: 'available', progress: null, error: null});
+    }
+    return getState();
+  }
+  return {getState, check, download, prepare, install, postpone,
     shouldWaitOnQuit: () => Boolean(preparing || downloading || installing || ['downloaded', 'installing'].includes(state.status)),
     waitForPreparation: () => preparing || downloading || Promise.resolve(getState())};
 }
@@ -114,7 +121,7 @@ function installUpdates({app, ipcMain, window, authorized, busy = () => false}) 
       else if (ready.status === 'current') {passingQuit = true; app.quit();}
     })().catch(error => console.warn('Could not finish updating:', error.code || error.name)).finally(() => {closing = false;});
   }
-  const actions = {state: controller.getState, prepare: controller.prepare, check: controller.check, download: controller.download, install: () => controller.install(false)};
+  const actions = {state: controller.getState, prepare: controller.prepare, check: controller.check, download: controller.download, postpone: controller.postpone, install: () => controller.install(false)};
   for (const [name, handler] of Object.entries(actions)) {
     ipcMain.handle('folio:update-' + name, event => {
       if (!authorized(event)) throw Error('Invalid update request origin.');

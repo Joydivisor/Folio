@@ -7,7 +7,7 @@ $metadata = Join-Path $releaseDir 'draft-metadata.json'
 node scripts/fetch-signing-assets.mjs
 if ($LASTEXITCODE -ne 0) { throw 'Could not verify CI downloads' }
 Add-Type -AssemblyName System.Security
-$protected = [IO.File]::ReadAllBytes((Resolve-Path '.installer-cache/signing/folio-update.dpapi'))
+$protected = [IO.File]::ReadAllBytes((Resolve-Path '.release-signing/folio-update.dpapi'))
 $der = [Security.Cryptography.ProtectedData]::Unprotect($protected,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
 try {
   [Convert]::ToBase64String($der) | node scripts/sign-update-feeds.mjs $releaseDir $metadata

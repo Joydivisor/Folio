@@ -6,7 +6,7 @@ import http from 'node:http';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
-import {execFile, execFileSync} from 'node:child_process';
+import {execFile, execFileSync, spawnSync} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createPackageWithOptions, extractAll, extractFile, getRawHeader, uncache} from '@electron/asar';
 import {signUpdate} from './sign-update-feeds.mjs';
@@ -57,7 +57,7 @@ try {
   replace(main,'const PORT = 4174;','const PORT = 4196;');
   replace(updates,"fetch: require('electron').net.fetch","fetch: (url, options) => require('electron').net.fetch("+JSON.stringify(local)+" + new URL(url).pathname.split('/').pop(), options)");
   replace(adapter,"target.base + 'appcast-mac-'",JSON.stringify(local)+" + 'appcast-mac-'");
-  replace(adapter,"'/usr/bin/pkexec', ['--disable-internal-agent',","'/usr/bin/sudo', ['-n',");
+  replace(adapter,"'/usr/bin/pkexec', ['--disable-internal-agent',","'/usr/bin/sudo', ['-n', '/usr/bin/pkexec', '--disable-internal-agent',");
   replace(adapter,"throw error;\n      }\n    } else {","console.error('Sparkle update:',error.message); throw error;\n      }\n    } else {");
   fs.writeFileSync(path.join(contents,'desktop/update-public-key.json'),JSON.stringify(raw));
   fs.copyFileSync('scripts/update-fixture.cjs',path.join(contents,'desktop/update-fixture.cjs'));
@@ -85,6 +85,11 @@ try {
   const bytes=fs.readFileSync(path.join(feed,fileName(next)));
   const signed=signUpdate({version:next,id,bytes,key:privateKey,base:local});
   fs.writeFileSync(path.join(feed,signed.name),signed.content);
+  if (!mac) {
+    const sha=crypto.createHash('sha256').update(bytes).digest('hex');
+    const corrupt=spawnSync('/usr/bin/sudo',['-n','/usr/lib/folio/install-update',next,String(bytes.length),sha,signed.content.trim()],{input:Buffer.from('truncated download')});
+    assert.equal(corrupt.status,65,'system installer must reject a corrupted DEB');
+  }
   fs.writeFileSync(path.join(feed,'release.json'),JSON.stringify({version:next,downloads:[{id,url:'https://github.com/Joydivisor/Folio/releases/download/v'+next+'/'+fileName(next),sizeBytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex')}]}));
   const launch=async()=>{
     const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;

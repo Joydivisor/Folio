@@ -37,7 +37,8 @@ export function addSparkle(app, arch) {
   fs.copyFileSync(path.join(cache, 'LICENSE'), path.join(contents, 'Resources/Sparkle-LICENSE.txt'));
   fs.writeFileSync(path.join(helper, 'Info.plist'), '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>sparkle</string><key>CFBundleIdentifier</key><string>app.getfolio.desktop.update</string><key>CFBundleName</key><string>Folio Update</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1</string><key>LSUIElement</key><true/></dict></plist>');
   const binary = path.join(helper, 'MacOS/sparkle');
-  run('/usr/bin/xcrun', ['clang', '-fobjc-arc', '-fblocks', '-F' + cache, '-framework', 'Sparkle', '-framework', 'AppKit', '-framework', 'Foundation',
+  run('/usr/bin/xcrun', ['clang', '-mmacosx-version-min=13.0', '-fobjc-arc', '-fblocks', '-DSPU_OBJC_DIRECT=__attribute__((objc_direct))',
+    '-DSPU_OBJC_DIRECT_MEMBERS=__attribute__((objc_direct_members))', '-F' + cache, '-framework', 'Sparkle', '-framework', 'AppKit', '-framework', 'Foundation',
     '-Wl,-rpath,@executable_path/../../../../Frameworks', ...Object.keys(cliSources).filter(s => s.endsWith('.m')).map(s => path.join(cache, s)), '-o', binary]);
   const plist = path.join(contents, 'Info.plist');
   run('/usr/bin/plutil', ['-insert', 'SUPublicEDKey', '-string', require('../desktop/update-public-key.json'), plist]);

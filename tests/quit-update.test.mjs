@@ -41,6 +41,8 @@ test('cancelling system authorization keeps the staged package available for the
   const update=createUpdateController({updater,version:'1.0.7'});
   await update.prepare();assert.equal((await update.install(false)).error,'cancelled');
   assert.equal(update.getState().status,'downloaded');
+  assert.equal(update.postpone().status,'available');assert.equal(update.shouldWaitOnQuit(),false);
+  await update.prepare();
   assert.equal((await update.install(false)).status,'installing');assert.equal(attempts,2);
 });
 
