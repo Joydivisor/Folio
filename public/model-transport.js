@@ -16,7 +16,8 @@ export function modelRequest(base,config,messages,system){
  return {endpoint,payload,headers:modelHeaders(base,config)};
 }
 export function modelContent(base,answer){
- const content=isAnthropic(base)?answer.content?.filter(b=>b.type==='text'&&typeof b.text==='string').map(b=>b.text).join('\n'):answer.choices?.[0]?.message?.content;
+ const content=isAnthropic(base)?answer?.content:answer?.choices?.[0]?.message?.content;
+ if(Array.isArray(content))return content.filter(b=>b?.type==='text'&&typeof b.text==='string').map(b=>b.text).join('');
  return typeof content==='string'?content:'';
 }
 export function unsupportedJsonFormat(status,body){return [400,422].includes(status)&&/response_format|json_object/i.test(body)&&/unsupported|not.support|unknown|unrecognized|not.allowed|invalid.parameter/i.test(body);}

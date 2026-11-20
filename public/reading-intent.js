@@ -1,6 +1,19 @@
 // Hints select a representation; they never manufacture experimental parameters.
+export function requestsTextOnly(question='',mode){
+ const q=String(question);
+ if(/(?:只|仅)(?:需要|需|用|要)?(?:纯)?(?:文字|文本|口头)|(?:纯文字|纯文本)(?:解释|说明|回答)|\b(?:text|prose)[ -]only\b|\bonly (?:use )?(?:text|prose)\b/i.test(q))return true;
+ const prohibitions=q.matchAll(/(?:不要|不用|无需|不需要|别)(?:再)?(?:给我|使用|生成|绘制|添加|展示|画|配|做|任何|[这那]个){0,3}(图表|图|表|可视化|演示|画布|3D)|\b(?:no|without) (?:any )?(diagrams?|visuals?|tables?|graphics?|3D)\b/gi);
+ for(const match of prohibitions){
+  const target=match[1]||match[2];
+  if(!mode||target==='图表')return true;
+  if(/^(表|table)/i.test(target)){if(mode==='compare')return true;}
+  else if(/^3D$/i.test(target)){if(mode==='3d')return true;}
+  else if(!['compare','derive','explain'].includes(mode))return true;
+ }
+ return false;
+}
 export function prefersText(question=''){
- return /(?:不要|不用|无需|不需要|别)(?:再)?[^。\n]{0,8}(?:图|表|可视化|演示|画布)|(?:只|仅)(?:用|需|要)?[^。\n]{0,8}(?:文字|一句|解释)|(?:用|限|只需)?[一二两三四五六七八九十\d]+(?:句|句话)|(?:text|prose) only|only (?:text|prose)|no (?:diagrams?|visuals?|tables?)|\b(?:one|two|three|\d+) sentences?\b/i.test(String(question));
+ return requestsTextOnly(question)||/(?:不要|不用|无需|不需要|别)(?:再)?[^。\n]{0,8}(?:图|表|可视化|演示|画布)|(?:只|仅)(?:用|需|要)?[^。\n]{0,8}(?:文字|一句|解释)|(?:用|限|只需)?[一二两三四五六七八九十\d]+(?:句|句话)|\b(?:one|two|three|\d+) sentences?\b/i.test(String(question));
 }
 export function requestsArtifactEdit(question=''){
  return /(?:修改|改成|改为|改一下|改掉|更改|替换|删除|删掉|添加|新增|增加|移除|重写|重画|调整|保留.*其余)|\b(?:edit|change|replace|remove|delete|add|update|rewrite)\b/i.test(String(question));

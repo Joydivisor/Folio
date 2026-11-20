@@ -47,3 +47,27 @@ test('near-1M input and more than sixteen messages cross the HTTP proxy intact',
  return using(async(url,opts)=>{const payload=JSON.parse(opts.body);assert.equal(payload.messages.length,42);assert.equal(payload.messages[1].content,large);assert.equal(payload.messages.at(-1).content,'turn 39');return Response.json({choices:[{message:{content:'ok'}}]});},async s=>{assert.equal((await call(s,'/api/chat',{body:{...input,messages}})).status,200);});
 });
 test('provider context and vision errors remain actionable without exposing upstream details',()=>using(async()=>new Response('maximum context length exceeded; PRIVATE',{status:400}),async s=>{const r=await call(s,'/api/chat',{body:{...input,responseFormat:'json'}});assert.equal(r.status,400);assert.match(r.data,/聊天记录已保留/);assert.ok(!r.data.includes('PRIVATE'));}));
+
+test('mode-specific trusted instructions survive native Claude, compatible JSON fallback, and text-block replies',async()=>{
+ for(const native of [false,true]){
+  let calls=0;
+  await using(async(_url,opts)=>{
+   calls++;const p=JSON.parse(opts.body),system=native?p.system:p.messages[0].content;
+   assert.match(system,/\/compare（/);assert.match(system,/columns/);assert.match(system,/Use English/);assert.ok(!system.includes('MY-PASSAGE'));
+   if(!native&&calls===1){assert.ok(p.response_format);return new Response('unsupported response_format',{status:400});}
+   assert.equal(p.response_format,undefined);
+   const blocks=[{type:'text',text:'{"val'},{type:'text',text:'ue":2}'}];
+   return Response.json(native?{content:blocks}:{choices:[{message:{content:blocks}}]});
+  },async s=>{
+   const body={...input,baseUrl:native?'https://api.anthropic.com/v1':'https://api.openai.com/v1',responseFormat:'json',outputMode:'compare',answerLanguage:'en',messages:[{role:'user',content:'MY-PASSAGE'}]};
+   const response=await call(s,'/api/chat',{body});assert.equal(response.status,200);assert.equal(JSON.parse(response.data).content,'{"value":2}');
+  });
+  assert.equal(calls,native?1:2);
+ }
+});
+test('empty upstream errors retain their HTTP status, and truncated empty menu answers reach bounded repair',async()=>{
+ await using(async()=>new Response('',{status:429}),async s=>assert.equal((await call(s,'/api/chat',{body:{...input,outputMode:'steps',responseFormat:'json'}})).status,429));
+ await using(async()=>Response.json({choices:[{finish_reason:'length',message:{content:''}}]}),async s=>{
+  const response=await call(s,'/api/chat',{body:{...input,outputMode:'derive',responseFormat:'json'}});assert.equal(response.status,200);assert.equal(JSON.parse(response.data).content,'');
+ });
+});

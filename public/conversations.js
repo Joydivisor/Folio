@@ -20,13 +20,13 @@ export function createConversations({enabled=()=>false,save=()=>{},onChange=()=>
   get current(){return active;},restore(value){active=validateConversation(value);},
   begin(source,question){this.archive();active={id:id(),source:cleanSource(source),question,createdAt:now(),turns:[],artifact:null};changed();return active.id;},
   ensure(source,question){return active?.id||this.begin(source,question);},isCurrent(token){return active?.id===token;},
-  complete(token,question,answer,plan,{source=active?.source,context=null}={}){
+  complete(token,question,answer,plan,{source=active?.source,context=null,pendingOutput,artifactId}={}){
    if(!this.isCurrent(token))return false;
-   active.source=cleanSource(source);active.turns.push({id:id(),question,source:cleanSource(source),context:clone(context),answer:clone(answer),plan:clone(plan)});changed();return true;
+   active.source=cleanSource(source);active.turns.push({id:id(),question,source:cleanSource(source),context:clone(context),answer:clone(answer),plan:clone(plan),...(pendingOutput?{pendingOutput}:{}),...(artifactId?{artifactId}:{})});changed();return true;
   },
   updateTurn(token,turnId,changes){if(!this.isCurrent(token))return false;const turn=active.turns.find(t=>t.id===turnId);if(!turn)return false;for(const key of ['quiz','quizAttempt','artifactId'])if(key in changes)turn[key]=clone(changes[key]);changed();return true;},
   setArtifact(token,artifact){if(this.isCurrent(token)){active.artifact=clone(artifact);changed();}},
-  history(){return (active?.turns||[]).map(t=>({question:t.question,answer:t.answer.paragraphs.map(p=>p.text).join('\n'),source:cleanSource(t.source),context:t.context,plan:t.plan,...(t.quiz?{quiz:t.quiz,quizAttempt:t.quizAttempt}:{} )}));},
+  history(){return (active?.turns||[]).map(t=>({question:t.question,answer:t.answer.paragraphs.map(p=>p.text).join('\n'),source:cleanSource(t.source),context:t.context,plan:t.plan,...(t.answer.nextQuestion?{nextQuestion:t.answer.nextQuestion}:{}),...(t.pendingOutput?{pendingOutput:t.pendingOutput}:{}),...(t.quiz?{quiz:t.quiz,quizAttempt:t.quizAttempt}:{} )}));},
   snapshot,archive(){if(enabled()){const note=snapshot();if(note)save(note);}},reset(){this.archive();active=null;changed();}
  };
 }

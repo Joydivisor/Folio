@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.6 · 2026-11-20
+
+- The nine composer output choices each send a dedicated system prompt. Flowcharts validate their branches, concept maps include their links in the first completed answer, and the reading canvas checks the chosen format on every generation attempt.
+- Keep the prompt, source and selected format when generation needs a retry. A request for missing information carries its format into the next turn, including after restart. Asking for a short introduction can accompany a table or a visual.
+- Check the generated output against the original geometric object and numeric permutation. The packaged desktop regression now submits and renders every menu choice on Windows, macOS and Linux.
+
 ## 1.0.5 · 2026-11-08
 
 - r2: Fix long answers painting over the self-check card. Lay out history, answers and quizzes in natural vertical flow; scroll wide display equations within their own containers. Verify long math, follow-ups, history expansion, zoom and restart in real Chromium.

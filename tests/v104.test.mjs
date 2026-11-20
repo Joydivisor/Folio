@@ -32,7 +32,7 @@ test('slash choices leave ordinary prose and math divisions intact',()=>{
 const explanation={kind:'explain',object:'An object',reason:'A reason',explanation:{title:'An explanation',paragraphs:[{text:'The answer.',sources:[]}]}};
 test('explicit output requests repair a wrong representation without overriding a text-only question',()=>{
  assert.throws(()=>parseReading(JSON.stringify(explanation),[],{strictPlan:true,outputMode:'compare'}));
- assert.equal(parseReading(JSON.stringify(explanation),[],{strictPlan:false,outputMode:'compare'}).plan.kind,'explain');
+ assert.throws(()=>parseReading(JSON.stringify(explanation),[],{strictPlan:false,outputMode:'compare'}),/comparison/);
  assert.equal(parseReading(JSON.stringify(explanation),[],{strictPlan:true,outputMode:'diagram',question:'只要文字解释'}).plan.kind,'explain');
  const clarified={...explanation,kind:'clarify',explanation:{...explanation.explanation,nextQuestion:'Which dimensions?'}};assert.equal(parseReading(JSON.stringify(clarified),[],{strictPlan:true,outputMode:'3d'}).answer.nextQuestion,'Which dimensions?');
 });

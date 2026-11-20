@@ -52,6 +52,7 @@ jobs:
           node scripts/smoke-desktop.mjs
           node scripts/test-library-restart.cjs
           export FOLIO_TEST_ARCHIVE="$(pwd)/dist/v$(node -p 'require("./package.json").version')/Folio-darwin-$(node -p 'process.arch')/Folio.app/Contents/Resources/app.asar"
+          npm run test:output-modes
           npm run test:v105
           npm run test:v105-layout
       - name: Install, launch and uninstall Debian package
@@ -61,6 +62,7 @@ jobs:
           sudo apt-get install -y xvfb ./releases/*.deb
           FOLIO_SMOKE_EXECUTABLE=/opt/Folio/Folio xvfb-run -a node scripts/smoke-desktop.mjs
           FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a node scripts/test-library-restart.cjs
+          FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a npm run test:output-modes
           FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a npm run test:v105
           FOLIO_TEST_ARCHIVE=/opt/Folio/resources/app.asar xvfb-run -a npm run test:v105-layout
           sudo apt-get remove -y folio
@@ -85,6 +87,7 @@ jobs:
             dist/v*/release-upload.json
             dist/v*/release-preflight.json
             tests/reports/library-restart.json
+            tests/reports/output-modes/ui.json
             tests/reports/v105/result.json
             tests/reports/v105-layout/result.json
             tests/reports/v105-layout/*.png

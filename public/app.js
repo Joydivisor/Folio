@@ -39,9 +39,8 @@ import {mountSelfCheck,quizPrompt,parseQuiz} from './self-check.js';
 import {setupNotebook} from './notebook.js';
 import {requestStructured} from './structured-response.js';
 import {createDocumentIndex} from './document-context.js';
-import {requestReading,parseReading,mountReadingAnswer} from './reading-response.js';
+import {generateReading,mountReadingAnswer} from './reading-response.js';
 import {sourceLabel} from './source-label.js';
-import {verifyPlanAgainstSource} from './source-verification.js';
 import {mountConcept} from './concept-view.js';
 import {contextBelongsToSource} from './selection-source.js';
 import {validatePermutationSnapshot} from './permutation-state.js';
@@ -295,7 +294,7 @@ async function askAPI(config,messages,signal){
   await keyReady;
   if(signal?.aborted)throw new DOMException('已停止','AbortError');
   const id=crypto.randomUUID();const cancel=()=>window.folioDesktop.cancelAI(id).catch(()=>{});signal?.addEventListener('abort',cancel,{once:true});
-  try{return await window.folioDesktop.requestAI({id,config:{baseUrl:config.baseUrl,model:config.model,thinking:config.thinking,workspaceId:config.workspaceId,maxTokens:config.maxTokens,responseFormat:config.responseFormat,answerLanguage:config.answerLanguage},messages});}
+  try{return await window.folioDesktop.requestAI({id,config:{baseUrl:config.baseUrl,model:config.model,thinking:config.thinking,workspaceId:config.workspaceId,maxTokens:config.maxTokens,responseFormat:config.responseFormat,answerLanguage:config.answerLanguage,outputMode:config.outputMode},messages});}
   finally{signal?.removeEventListener('abort',cancel);}
  }
  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...config,messages}),signal});const data=await res.json();if(!res.ok)throw new Error(data.error||'请求失败');return data.content;
@@ -395,7 +394,7 @@ function renderPlan(plan,source){
  else if(plan.kind==='tetrahedron')showScene({operation:plan.operation,explanation:plan.reason,generated:!source.builtin},source);
  else if(['clarify','unsupported'].includes(plan.kind)){$('visualStage').innerHTML='<div class="visual-error"><h2>'+esc(plan.kind==='clarify'?'需要补充一点信息':'这个实验还未支持')+'</h2><p>'+esc(plan.reason)+'</p><p>可以在下方补充说明，原文引用仍然保留。</p></div>';}
 }
-async function visualizeSelection(source,forceQuestion=false,{followup=false,question=source.text,outputMode=null}={}){
+async function visualizeSelection(source,forceQuestion=false,{followup=false,question=source.text,outputMode=null,onComplete}={}){
  const epoch=chatEpoch;await keyReady;if(epoch!==chatEpoch)return;
  conversations.ensure(source,question);
  const candidate=artifacts.current;const baseArtifact=followup&&candidate&&candidate.source.id===source.id&&candidate.source.text===source.text&&candidate.source.regionId===source.regionId?candidate:null;if(!baseArtifact)artifacts.suspend();
@@ -415,15 +414,22 @@ async function visualizeSelection(source,forceQuestion=false,{followup=false,que
   if(controller.signal.aborted)return;showDocumentContext(context);setPhase('正在结合原文解释选段');
   source=await prepareVisionSource(source,question,controller.signal);
   const images=await conversationImages(source,controller.signal);
-  const ask=messages=>{assertContextFits(messages);return askAPI({...settings,responseFormat:'json',maxTokens:8192},messages,controller.signal);};
-  const response=await requestStructured(ask,withImages(requestReading(source.text||'',context,{question,history:conversations.history(),artifact:baseArtifact?baseArtifact.versions[baseArtifact.cursor]:null,answerLanguage:readLocal('folio-answer-language','auto'),outputMode,hasImages:images.length>0}),images),(raw,{attempt})=>parseReading(raw,context?.excerpts||[],{strictPlan:attempt===0,question,outputMode,artifact:baseArtifact?.versions[baseArtifact.cursor]}),{signal:controller.signal,onRepair:()=>setPhase('正在整理回答格式')});if(controller.signal.aborted||!conversations.isCurrent(sessionToken))return;let plan=response.plan;
-  try{if(response.action!=='revise')plan=verifyPlanAgainstSource(plan,baseArtifact&&plan.kind==='permutation'?question:source.text+'\n'+response.parameterEvidence.map(e=>e.quote).join('\n'));}catch{plan={kind:'explain',object:response.answer.title,reason:'已展示原文解读，参数存在不同定义，暂不混合计算。'};}
-  conversations.complete(sessionToken,question,response.answer,plan,{source,context});renderConversationHistory();showSelfCheck(conversations.current.turns.at(-1));conversations.setArtifact(sessionToken,plan);
-
+  const ask=(messages,mode)=>{assertContextFits(messages);return askAPI({...settings,responseFormat:'json',maxTokens:8192,outputMode:mode},messages,controller.signal);};
+  const response=await generateReading(ask,source.text||'',context,{
+   question,history:conversations.history(),artifact:baseArtifact?.versions[baseArtifact.cursor],answerLanguage:readLocal('folio-answer-language','auto'),
+   outputMode,images,signal:controller.signal,onRepair:()=>setPhase('正在整理回答格式')
+  });
+  if(controller.signal.aborted||!conversations.isCurrent(sessionToken))return;
+  const {plan,answer,visual}=response;
   pending.remove();
-  if(baseArtifact&&plan.kind==='explain'&&response.action!=='revise'&&!requestsArtifactEdit(question)){await artifacts.appendDiscussion(question,response.answer,baseArtifact);conversations.setArtifact(sessionToken,{kind:'folio-artifact',record:artifacts.current});conversations.updateTurn(sessionToken,conversations.current.turns.at(-1).id,{artifactId:baseArtifact.id});return;}
-  const accepted=await artifacts.accept(source,plan,response.answer,response.visual,baseArtifact);const acceptedVersion=accepted.versions[accepted.cursor].id;conversations.updateTurn(sessionToken,conversations.current.turns.at(-1).id,{artifactId:accepted.id});
-  conversations.setArtifact(sessionToken,{kind:'folio-artifact',record:artifacts.current});
+  if(!outputMode&&baseArtifact&&plan.kind==='explain'&&response.action!=='revise'&&!requestsArtifactEdit(question))await artifacts.appendDiscussion(question,answer,baseArtifact);
+  else await artifacts.accept(source,plan,answer,visual,baseArtifact);
+  if(controller.signal.aborted||!conversations.isCurrent(sessionToken))return;
+  const record=artifacts.current,acceptedVersion=record.versions[record.cursor].id;
+  const pendingOutput=answer.nextQuestion?outputMode:null;
+  conversations.complete(sessionToken,question,answer,plan,{source,context,pendingOutput,artifactId:record.id});
+  conversations.setArtifact(sessionToken,{kind:'folio-artifact',record});
+  renderConversationHistory();showSelfCheck(conversations.current.turns.at(-1));onComplete?.(pendingOutput);
   if(plan.kind==='concept'&&!response.visual){
    setPhase('解读已完成，正在整理关系图');
    try{
@@ -432,10 +438,20 @@ async function visualizeSelection(source,forceQuestion=false,{followup=false,que
    }catch(error){if(controller.signal.aborted)return;const note=document.createElement('p');note.className='muted';note.textContent='这次关系图未能完成，原文解读已保留。';$('visualStage').append(note);}
   }
 
- }catch(e){if(controller.signal.aborted)return;pending.remove();const error=node('div',undefined,{className:'visual-error'});error.append(node('h2',ui('暂时无法可靠生成','Could not complete the response')),node('p',e instanceof SyntaxError?ui('模型返回的格式仍不完整，请重试。','The model returned an incomplete response. Try again.'):e.message),button(ui('重试','Retry'),()=>{error.remove();return visualizeSelection(source,true,{followup:true,question,outputMode});}));if(!artifacts.current)$('visualStage').replaceChildren();$('visualStage').append(error);}
+ }catch(e){
+  if(controller.signal.aborted)return;
+  pending.remove();
+  const error=node('div',undefined,{className:'visual-error'});
+  const detail=e.name==='OutputFormatError'?ui('模型重试后仍未给出所选格式。可以编辑输入框中的问题或重试。','The model returned an invalid format twice. Edit the question in the composer or retry.'):e instanceof SyntaxError?ui('模型返回的格式仍不完整，请重试。','The model returned an incomplete response. Try again.'):e.message;
+  error.setAttribute('role','alert');
+  error.append(node('h2',ui('暂时无法可靠生成','Could not complete the response')),node('p',detail),button(ui('重试','Retry'),()=>{error.remove();return visualizeSelection(source,true,{followup,question,outputMode,onComplete});}));
+  if(!artifacts.current)$('visualStage').replaceChildren();
+  $('visualStage').append(error);
+ }
  finally{pending.remove();if(requestController===controller){requestController=null;setBusy(false);scrollToCurrentAnswer();}}
 }
 composer=setupPromptComposer({wrap:document.querySelector('.composer-wrap'),input:$('prompt'),form:$('chatForm'),onDropSource:stageSource,sourceFromTransfer});
+composer.setMode(conversations.current?.turns.at(-1)?.pendingOutput);
 function stageSource(source){draftSource={...source};setAICollapsed(false);setQuote(draftSource);composer.staged(true);getSelection()?.removeAllRanges();clearSelectionDock();$('prompt').focus();}
 let disposeQuiz=null,historyVisible=20,shownQuizTurn=null;const quizControllers=new Set();
 function scrollToCurrentAnswer(){const panel=$('visualPanel'),stage=$('visualStage');if(!panel.hidden)panel.scrollTop+=stage.getBoundingClientRect().top-panel.getBoundingClientRect().top;}
@@ -508,7 +524,25 @@ document.addEventListener('drop',e=>{
 },true);
 $('prompt').addEventListener('paste',e=>{const file=[...e.clipboardData?.files||[]].find(isImageFile);if(file){e.preventDefault();guard(()=>stageImage(file))();}});
 function sourceFromTransfer(transfer){const text=transfer.getData('text/plain').trim();if(!text)return null;const same=readerDrag&&transfer.getData('application/x-folio-selection')===readerDrag.token&&readerDrag.source.text===text&&readerDrag.source.id===current.id;return same?{...readerDrag.source}:{text:text.slice(0,16000),name:ui('拖入的文字','Dropped text'),id:null,external:true};}
-$('chatForm').onsubmit=e=>{e.preventDefault();if(requestController)return;const {text,outputMode}=composer.take();if(!text&&!draftSource&&!outputMode)return;const source=draftSource||quote?{...(draftSource||quote),builtin:false}:conversations.current&&(!documentReady||conversations.current.source.id===current.id)?{...conversations.current.source,builtin:false}:{text:'',name:current.name,id:current.id,documentId:current.documentId,revision:current.revision,page};if(!text&&!source.text&&!source.regionId)return;const followup=!draftSource&&Boolean(conversations.current);draftSource=null;$('prompt').value='';composer.reset();visualizeSelection(source,true,{followup,question:text||ui('请解释这段原文。','Explain this passage.'),outputMode});};
+$('chatForm').onsubmit=e=>{
+ e.preventDefault();if(requestController)return;
+ const {text,outputMode}=composer.take(),typed=$('prompt').value,staged=draftSource,epoch=chatEpoch;
+ if(!text&&!staged&&!outputMode)return;
+ const source=staged||quote?{...(staged||quote),builtin:false}:conversations.current&&(!documentReady||conversations.current.source.id===current.id)?{...conversations.current.source,builtin:false}:{text:'',name:current.name,id:current.id,documentId:current.documentId,revision:current.revision,page};
+ const hasHistory=!!conversations.current?.turns.length;
+ if(!text&&!source.text&&!source.regionId&&!source.image&&!(outputMode&&(hasHistory||(documentReady&&$('includePage').checked)))){
+  if(outputMode)toast(ui('请输入问题或拖入要处理的原文。','Enter a question or drop a passage to use this format.'));
+  $('prompt').focus();return;
+ }
+ const followup=!staged&&Boolean(conversations.current);
+ const question=text||(outputMode?ui('请用所选形式呈现当前材料。','Present the current material in the selected format.'):ui('请解释这段原文。','Explain this passage.'));
+ function clearDraft(pendingMode){
+  if(epoch!==chatEpoch||draftSource!==staged||$('prompt').value!==typed||composer.take().outputMode!==outputMode)return;
+  draftSource=null;$('prompt').value='';composer.reset();if(pendingMode)composer.setMode(pendingMode);
+ }
+ if(!outputMode)clearDraft();
+ visualizeSelection(source,true,{followup,question,outputMode,onComplete:outputMode?clearDraft:undefined});
+};
 $('stopButton').onclick=()=>{requestController?.abort();requestController=null;setBusy(false);$('visualStage').querySelectorAll('.visual-loading').forEach(e=>e.remove());$('visualStage').append(node('p',ui('已停止生成。','Generation stopped.'),{className:'muted'}));};
 $('newChat').onclick=()=>{endConversation();$('prompt').focus();};
 

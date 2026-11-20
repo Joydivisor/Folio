@@ -39,6 +39,8 @@ jobs:
         run: |
           $version = (Get-Content package.json | ConvertFrom-Json).version
           $env:FOLIO_TEST_ARCHIVE = Join-Path $PWD "dist/v$version/Folio-win32-x64/resources/app.asar"
+          npm run test:output-modes
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:v105
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run test:v105-layout
@@ -67,6 +69,7 @@ jobs:
             dist/v*/release-upload.json
             dist/v*/release-preflight.json
             tests/reports/update-install.json
+            tests/reports/output-modes/ui.json
             tests/reports/update-install-*/*.png
             tests/reports/v105/result.json
             tests/reports/v105-layout/result.json

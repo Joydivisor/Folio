@@ -1,5 +1,26 @@
 import {identity,compose,cycles} from './groups.js';
 
+const namedShapes=[
+ ['cube',/立方体|正方体|\bcubes?\b/i],
+ ['tetrahedron',/四面体|\btetrahedr(?:on|a)\b/i],
+ ['octahedron',/八面体|\boctahedr(?:on|a)\b/i],
+ ['sphere',/球体|球面|\bspheres?\b/i],
+ ['cylinder',/圆柱|\bcylinders?\b/i],
+ ['cone',/圆锥|\bcones?\b/i],
+];
+
+export function checkOutputGeometry(plan,question,selection){
+ if(plan.kind==='document'){
+  for(const block of plan.blocks)if(block.type==='visual')checkOutputGeometry(block.display,question,selection);
+  return;
+ }
+ if(plan.kind!=='geometry'&&plan.kind!=='tetrahedron')return;
+ const mentioned=text=>namedShapes.filter(([,pattern])=>pattern.test(text)).map(([name])=>name);
+ const asked=mentioned(question),shapes=asked.length?asked:mentioned(selection);
+ const actual=plan.kind==='tetrahedron'?'tetrahedron':plan.shape;
+ if(actual!=='mesh'&&shapes.length===1&&actual!==shapes[0])throw Error('题中给出的形状是 '+shapes[0]+'，请保留原对象及变换。');
+}
+
 // Deliberately narrow: explicit numeric cycles only. Never guess from prose.
 export function cycleMapping(notation,n,order='right-first') {
   const groups=[...notation.matchAll(/\(([^()]*)\)/g)].map(m=>m[1].trim().split(/[\s,，]+/).map(Number));

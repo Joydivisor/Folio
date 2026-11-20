@@ -1,4 +1,4 @@
-// Explicit output choices are an additional input; automatic intent stays unchanged.
+import {requestsTextOnly} from './reading-intent.js';
 export const OUTPUT_COMMANDS=[
  {id:'visualize',label:['交互可视化','Interactive visual'],description:['选择适合内容的交互演示','Choose a suitable interactive view'],kinds:['permutation','derived','geometry','tetrahedron','anatomy','process','concept','diagram'],aliases:['可视化','交互']},
  {id:'diagram',label:['流程图','Flowchart'],description:['呈现分支、循环和依赖','Show branches, loops and dependencies'],kinds:['diagram'],aliases:['流程图','flowchart']},
@@ -14,5 +14,8 @@ export const outputCommand=id=>OUTPUT_COMMANDS.find(c=>c.id===id||c.aliases.incl
 export function commandMatches(query=''){const q=query.toLowerCase();return OUTPUT_COMMANDS.filter(c=>[c.id,...c.label,...c.aliases].some(s=>s.toLowerCase().includes(q)));}
 export function slashQuery(text,caret=text.length){const match=text.slice(0,caret).match(/(?:^|\n)\/([^\s/]*)$/);return match?{query:match[1],start:caret-match[1].length-1,end:caret}:null;}
 export function parseOutputCommand(text){const m=String(text).match(/^\s*\/([^\s/]+)(?:\s+|$)/),command=m&&outputCommand(m[1].toLowerCase());return command?{command,text:text.slice(m[0].length).trim()}:{command:null,text};}
-export function outputInstruction(id){const c=outputCommand(id);return c?`\n本次用户显式选择输出方式 /${c.id}（${c.label[0]}）。requested_output 是本次的输出要求，优先于自动形式判断；请使用 ${c.kinds.join('/')}，或包含这些形式的 document。不要改变原文对象或编造参数。资料不足或当前引擎无法表达时用 explain 说明具体缺失条件。用户问题若明确只要文字或禁止图示，仍遵守文字要求。\n`:'';}
-export function satisfiesOutput(plan,id){const c=outputCommand(id);return !c||c.kinds.includes(plan.kind)||(plan.kind==='document'&&plan.blocks?.some(b=>b.type==='visual'&&c.kinds.includes(b.display?.kind)));}
+export function resolveOutputMode(id,question){
+ const command=outputCommand(id);
+ return command ? (requestsTextOnly(question,command.id) ? 'explain' : command.id) : null;
+}
+export function satisfiesOutput(plan,id){const c=outputCommand(id);return !c||c.kinds.includes(plan.kind)||(plan.kind==='document'&&Array.isArray(plan.blocks)&&plan.blocks.some(b=>b?.type==='visual'&&c.kinds.includes(b.display?.kind)));}
